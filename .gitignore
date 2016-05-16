@@ -50,4 +50,4 @@ local.properties
 *.launch
 .target
 
-src/obstacle-avoidance
+src/obstacle_avoidance
