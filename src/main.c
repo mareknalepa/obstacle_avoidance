@@ -1,5 +1,6 @@
 #include "common.h"
 #include "daemon.h"
+#include "sensors_data.h"
 
 int main(int argc, char** argv)
 {
@@ -21,6 +22,17 @@ int main(int argc, char** argv)
 
 	/* Init daemon */
 	daemon_init("obstacle_avoidance", debug, "/var/run/obstacle_avoidance.pid");
+
+	/* Init sensors subsystem */
+	if (sensors_data_init() < 0)
+		return 1;
+
+	/* Begin infinite loop */
+	while (1)
+	{
+		if (sensors_data_read() < 0)
+			break;
+	}
 
 	return 0;
 }
