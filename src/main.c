@@ -1,6 +1,10 @@
 #include "common.h"
 #include "daemon.h"
 #include "sensors_data.h"
+#include "modes.h"
+#include "supervisor.h"
+#include "brake.h"
+#include "pathfinder.h"
 
 int main(int argc, char** argv)
 {
@@ -27,11 +31,17 @@ int main(int argc, char** argv)
 	if (sensors_data_init() < 0)
 		return 1;
 
+	/* Register application modes actions */
+	mode_register_handler(MODE_SUPERVISOR, &supervisor_action);
+	mode_register_handler(MODE_BRAKE, &brake_action);
+	mode_register_handler(MODE_PATHFINDER, &pathfinder_action);
+
 	/* Begin infinite loop */
 	while (1)
 	{
 		if (sensors_data_read() < 0)
 			break;
+		mode_action();
 	}
 
 	return 0;
