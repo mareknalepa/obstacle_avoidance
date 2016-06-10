@@ -39,8 +39,6 @@ int main(int argc, char** argv)
 	/* Begin infinite loop */
 	while (1)
 	{
-		if (sensors_data_read() < 0)
-			break;
 		mode_action();
 	}
 
