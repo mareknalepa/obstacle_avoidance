@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <sys/syslog.h>
 
 #endif /* COMMON_H_ */

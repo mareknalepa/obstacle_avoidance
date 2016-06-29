@@ -1,10 +1,17 @@
 #include "common.h"
 #include "daemon.h"
+#include "scheduler.h"
 #include "sensors_data.h"
+#include "ipc.h"
 #include "modes.h"
+#include "motors.h"
 #include "supervisor.h"
 #include "brake.h"
 #include "pathfinder.h"
+
+#include <signal.h>
+
+static void signal_handler(int signum);
 
 int main(int argc, char** argv)
 {
@@ -23,12 +30,27 @@ int main(int argc, char** argv)
 			break;
 		}
 	}
+	
+	/* Set process priority */
+	scheduler_init(98);
 
 	/* Init daemon */
 	daemon_init("obstacle_avoidance", debug, "/var/run/obstacle_avoidance.pid");
+	
+	/* Register signal handlers */
+    signal(SIGINT, &signal_handler);
+    signal(SIGTERM, &signal_handler);
 
 	/* Init sensors subsystem */
 	if (sensors_data_init() < 0)
+		return 1;
+	
+	/* Init inter-process communication subsystem */
+	if (ipc_init() < 0)
+		return 1;
+	
+	/* Init motors driver */
+	if (motors_init() < 0)
 		return 1;
 
 	/* Register application modes actions */
@@ -39,8 +61,22 @@ int main(int argc, char** argv)
 	/* Begin infinite loop */
 	while (1)
 	{
+		scheduler_begin_cycle();
 		mode_action();
+		scheduler_end_cycle();
 	}
 
 	return 0;
+}
+
+void signal_handler(int signum)
+{
+	switch (signum)
+    {
+    case SIGINT:
+	case SIGTERM:
+		ipc_raspberry_daemon_attach();
+		daemon_destroy();
+		break;
+    }
 }

@@ -135,3 +135,9 @@ void daemon_init(const char* name, int debug, const char* pidfile)
 
 	syslog(LOG_INFO, "Created PID file '%s'.", pidfile);
 }
+
+void daemon_destroy(void)
+{
+	syslog(LOG_INFO, "Daemon stopping...");
+	exit(0);
+}
