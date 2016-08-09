@@ -29,8 +29,6 @@ int ipc_init(void)
 	syslog(LOG_INFO, "Raspberry daemon PID: %d", ipc_raspberry_daemon_pid);
 	pclose(fp);
 	
-	ipc_raspberry_daemon_attach();
-	
 	return 0;
 }
 
