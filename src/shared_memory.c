@@ -22,7 +22,7 @@ int shared_memory_map_rdonly(const char* file, int* fd, void** ptr, int size)
 
 int shared_memory_map_rdwr(const char* file, int* fd, void** ptr, int size)
 {
-	*fd = open(file, O_RDWR | O_CREAT | O_CLOEXEC);
+	*fd = open(file, O_RDWR | O_CREAT | O_CLOEXEC, (mode_t) 0777);
 	if (*fd < 0)
 		return -1;
 	

@@ -53,11 +53,11 @@ int sensors_data_init(void)
 void sensors_data_destroy(void)
 {
 	shared_memory_unmap(&sensors_data.dist_fd,
-						 (void*) &sensors_data.dist, sizeof(distance_t));
+						 (void**) &sensors_data.dist, sizeof(distance_t));
 	shared_memory_unmap(&sensors_data.accel_fd,
-						 (void*) &sensors_data.accel, sizeof(accel_t));
+						 (void**) &sensors_data.accel, sizeof(accel_t));
 	shared_memory_unmap(&sensors_data.gyro_mag_fd,
-						 (void*) &sensors_data.gyro_mag, sizeof(gyro_mag_t));
+						 (void**) &sensors_data.gyro_mag, sizeof(gyro_mag_t));
 	shared_memory_unmap(&sensors_data.encoder_fd,
-						 (void*) &sensors_data.encoder, sizeof(encoder_t));
+						 (void**) &sensors_data.encoder, sizeof(encoder_t));
 }

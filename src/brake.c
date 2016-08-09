@@ -14,10 +14,6 @@ void brake_action(void)
 	if (brake_initial_left == 0 || brake_initial_right == 0)
 	{
 		motors_read(&brake_initial_left, &brake_initial_right);
-
-		/* TODO: fix invalid motors' PWM values */
-		brake_initial_left = 100;
-		brake_initial_right = 100;
 	}
 	
 	int distance = sensors_data.dist->distance;

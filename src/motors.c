@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include <linux/i2c-dev.h>
+#include "shared_memory.h"
 
 static const char* motors_i2c_path = "/dev/i2c-1";
 static const int motors_i2c_address = 0x47;
@@ -13,6 +14,16 @@ static const uint8_t motors_left_dir = 6;
 static const uint8_t motors_right_dir= 7;
 static const uint8_t motors_forward = 1;
 static const uint8_t motors_backward = 0;
+
+static const char* motors_file = "/home/pi/mmap_buffors/motors_buffor";
+static int motors_fd = -1;
+
+typedef struct {
+	int left;
+	int right;
+} motors_t;
+
+static motors_t* motors = 0;
 
 int motors_init(void)
 {
@@ -30,6 +41,14 @@ int motors_init(void)
 		return -1;
 	}
 	
+	if (shared_memory_map_rdwr(motors_file, &motors_fd, (void*) &motors,
+							 sizeof(motors_t)) < 0)
+	{
+		syslog(LOG_ERR, "Cannot initialize motors subsystem.");
+		motors_destroy();
+		return -1;
+	}
+	
 	return 0;
 }
 
@@ -37,20 +56,13 @@ void motors_destroy(void)
 {
 	close(motors_i2c_fd);
 	motors_i2c_fd = -1;
+	shared_memory_unmap(&motors_fd, (void**) &motors, sizeof(motors_t));
 }
 
 void motors_read(int* left, int* right)
 {
-	*left = i2c_smbus_read_byte_data(motors_i2c_fd, motors_left_pwm);
-	int direction = (int) i2c_smbus_read_byte_data(motors_i2c_fd,
-												 motors_left_dir);
-	if (direction == motors_backward)
-		*left *= -1;
-	
-	*right = i2c_smbus_read_byte_data(motors_i2c_fd, motors_right_pwm);
-	direction = (int) i2c_smbus_read_byte_data(motors_i2c_fd, motors_right_dir);
-	if (direction == motors_backward)
-		*right *= -1;
+	*left = motors->left;
+	*right = motors->right;
 }
 
 void motors_write(int left, int right)
@@ -80,4 +92,7 @@ void motors_write(int left, int right)
 		byte = (uint8_t) right;
 		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_pwm, byte);
 	}
+	
+	motors->left = left;
+	motors->right = right;
 }
