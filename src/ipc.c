@@ -1,6 +1,6 @@
 #include "ipc.h"
 
-#include <signal.h>
+#include "common.h"
 
 #define PIDOF_COMMAND "pidof raspberry_deamon"
 static pid_t ipc_raspberry_daemon_pid;

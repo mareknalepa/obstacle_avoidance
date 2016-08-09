@@ -1,5 +1,6 @@
 #include "motors.h"
 
+#include "common.h"
 #include <linux/i2c-dev.h>
 
 static const char* motors_i2c_path = "/dev/i2c-1";

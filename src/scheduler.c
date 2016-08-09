@@ -1,5 +1,6 @@
 #include "scheduler.h"
 
+#include "common.h"
 #include <sched.h>
 #include <time.h>
 

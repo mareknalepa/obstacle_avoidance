@@ -1,5 +1,7 @@
 #include "modes.h"
 
+#include "common.h"
+
 application_mode_t mode = MODE_SUPERVISOR;
 application_mode_handler_t mode_handlers[3] = { 0 };
 

@@ -1,8 +1,6 @@
 #ifndef MOTORS_H_
 #define MOTORS_H_
 
-#include "common.h"
-
 int motors_init(void);
 void motors_destroy(void);
 void motors_read(int* left, int* right);

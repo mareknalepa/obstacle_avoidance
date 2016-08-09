@@ -1,5 +1,6 @@
 #include "pathfinder.h"
 
+#include "common.h"
 #include "sensors_data.h"
 #include "ipc.h"
 #include "modes.h"

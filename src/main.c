@@ -9,8 +9,6 @@
 #include "brake.h"
 #include "pathfinder.h"
 
-#include <signal.h>
-
 static void signal_handler(int signum);
 
 int main(int argc, char** argv)

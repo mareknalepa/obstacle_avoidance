@@ -12,5 +12,6 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/syslog.h>
+#include <signal.h>
 
 #endif /* COMMON_H_ */

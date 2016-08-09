@@ -1,8 +1,6 @@
 #ifndef SENSORS_DATA_H_
 #define SENSORS_DATA_H_
 
-#include "common.h"
-
 typedef struct {
     int distance;
 } distance_t;
@@ -46,7 +44,7 @@ typedef struct {
 
 extern sensors_data_t sensors_data;
 
-int sensors_data_init();
-void sensors_data_destroy();
+int sensors_data_init(void);
+void sensors_data_destroy(void);
 
 #endif /* SENSORS_DATA_H_ */

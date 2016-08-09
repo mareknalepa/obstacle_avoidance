@@ -1,5 +1,7 @@
 #include "daemon.h"
 
+#include "common.h"
+
 void daemon_init(const char* name, int debug, const char* pidfile)
 {
 	pid_t pid, sid;

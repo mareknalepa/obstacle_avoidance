@@ -11,6 +11,7 @@ obstacle_avoidance_SOURCES = \
 	pathfinder.c \
 	scheduler.c \
 	sensors_data.c \
+	shared_memory.c \
 	supervisor.c
 
 noinst_HEADERS = \
@@ -23,4 +24,5 @@ noinst_HEADERS = \
 	pathfinder.h \
 	scheduler.h \
 	sensors_data.h \
+	shared_memory.h \
 	supervisor.h

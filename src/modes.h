@@ -1,8 +1,6 @@
 #ifndef MODES_H_
 #define MODES_H_
 
-#include "common.h"
-
 typedef enum {
 	MODE_SUPERVISOR = 0,
 	MODE_BRAKE,
