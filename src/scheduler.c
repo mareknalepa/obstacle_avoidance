@@ -4,7 +4,7 @@
 #include <sched.h>
 #include <time.h>
 
-#define SCHEDULER_CYCLE_INTERVAL 50000000L;
+#define SCHEDULER_CYCLE_INTERVAL 100000000;
 
 static struct timespec scheduler_timer;
 

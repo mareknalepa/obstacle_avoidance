@@ -60,6 +60,7 @@ int main(int argc, char** argv)
 	while (1)
 	{
 		scheduler_begin_cycle();
+		sensors_data_filter();
 		mode_action();
 		scheduler_end_cycle();
 	}
@@ -73,6 +74,8 @@ void signal_handler(int signum)
     {
     case SIGINT:
 	case SIGTERM:
+		motors_write(0, 0);
+		motors_destroy();
 		ipc_raspberry_daemon_attach();
 		daemon_destroy();
 		break;

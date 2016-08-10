@@ -5,10 +5,15 @@
 #include "ipc.h"
 #include "modes.h"
 #include "brake.h"
+#include "motors.h"
 
 void supervisor_action(void)
 {
-	if (sensors_data.dist->distance < DISTANCE_TRESHOLD)
+	int left, right;
+	motors_read(&left, &right);
+
+	if (left != 0 && right != 0 &&
+		sensors_data.dist->distance < DISTANCE_TRESHOLD)
 	{
 		mode_switch(MODE_BRAKE);
 		if (ipc_raspberry_daemon_detach() < 0)

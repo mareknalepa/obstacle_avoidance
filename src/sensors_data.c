@@ -61,3 +61,12 @@ void sensors_data_destroy(void)
 	shared_memory_unmap(&sensors_data.encoder_fd,
 						 (void**) &sensors_data.encoder, sizeof(encoder_t));
 }
+
+void sensors_data_filter(void)
+{
+	sensors_data.heading -= sensors_data.gyro_mag->gyro_yaw / 10;
+	if (sensors_data.heading <= -180.0)
+		sensors_data.heading = 360.0 + sensors_data.heading;
+	else if (sensors_data.heading >= 180.0)
+		sensors_data.heading = -360.0 + sensors_data.heading;
+}

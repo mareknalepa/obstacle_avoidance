@@ -71,25 +71,29 @@ void motors_write(int left, int right)
 	if (left < 0)
 	{
 		byte = (uint8_t) (left * -1);
-		i2c_smbus_write_byte_data(motors_i2c_fd, motors_left_pwm, byte);
 		i2c_smbus_write_byte_data(motors_i2c_fd, motors_left_dir,
 								 motors_backward);
+		i2c_smbus_write_byte_data(motors_i2c_fd, motors_left_pwm, byte);
 	}
 	else
 	{
 		byte = (uint8_t) left;
+		i2c_smbus_write_byte_data(motors_i2c_fd, motors_left_dir,
+								 motors_forward);
 		i2c_smbus_write_byte_data(motors_i2c_fd, motors_left_pwm, byte);
 	}
 	if (right < 0)
 	{
 		byte = (uint8_t) (right * -1);
-		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_pwm, byte);
 		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_dir,
 								 motors_backward);
+		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_pwm, byte);
 	}
 	else
 	{
 		byte = (uint8_t) right;
+		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_dir,
+								 motors_forward);
 		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_pwm, byte);
 	}
 	

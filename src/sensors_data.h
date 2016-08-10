@@ -15,9 +15,9 @@ typedef struct {
 } accel_t;
 
 typedef struct {
-    float gyro_yaw;
-    float gyro_pitch;
     float gyro_roll;
+    float gyro_pitch;
+    float gyro_yaw;
     float mag_x;
     float mag_y;
     float mag_z;
@@ -40,11 +40,13 @@ typedef struct {
     gyro_mag_t* gyro_mag;
     int encoder_fd;
     encoder_t* encoder;
+    double heading;
 } sensors_data_t;
 
 extern sensors_data_t sensors_data;
 
 int sensors_data_init(void);
 void sensors_data_destroy(void);
+void sensors_data_filter(void);
 
 #endif /* SENSORS_DATA_H_ */
