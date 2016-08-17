@@ -13,7 +13,8 @@ void brake_action(void)
 {
 	if (brake_initial_left == 0 || brake_initial_right == 0)
 	{
-		motors_read(&brake_initial_left, &brake_initial_right);
+		brake_initial_left = motors->left;
+		brake_initial_right = motors->right;
 	}
 	
 	int distance = sensors_data.dist->distance;

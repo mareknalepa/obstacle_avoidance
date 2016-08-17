@@ -18,12 +18,7 @@ static const uint8_t motors_backward = 0;
 static const char* motors_file = "/home/pi/mmap_buffors/motors_buffor";
 static int motors_fd = -1;
 
-typedef struct {
-	int left;
-	int right;
-} motors_t;
-
-static motors_t* motors = 0;
+motors_t* motors = 0;
 
 int motors_init(void)
 {
@@ -57,12 +52,6 @@ void motors_destroy(void)
 	close(motors_i2c_fd);
 	motors_i2c_fd = -1;
 	shared_memory_unmap(&motors_fd, (void**) &motors, sizeof(motors_t));
-}
-
-void motors_read(int* left, int* right)
-{
-	*left = motors->left;
-	*right = motors->right;
 }
 
 void motors_write(int left, int right)

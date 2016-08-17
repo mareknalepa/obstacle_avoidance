@@ -9,10 +9,7 @@
 
 void supervisor_action(void)
 {
-	int left, right;
-	motors_read(&left, &right);
-
-	if (left != 0 && right != 0 &&
+	if ((motors->left > 0 || motors->right > 0) &&
 		sensors_data.dist->distance < DISTANCE_TRESHOLD)
 	{
 		mode_switch(MODE_BRAKE);
