@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "shared_memory.h"
+#include "motors.h"
 
 sensors_data_t sensors_data = { 0 };
 
@@ -9,6 +10,8 @@ static const char* distance_file = "/home/pi/mmap_buffors/distance_buffor";
 static const char* accel_file = "/home/pi/mmap_buffors/accelerometer_buffor";
 static const char* gyro_mag_file = "/home/pi/mmap_buffors/sensors_buffor";
 static const char* encoder_file = "/home/pi/mmap_buffors/encoder_buffor";
+
+#define SENSORS_DEFAULT_DIST_RATIO 3.2
 
 int sensors_data_init(void)
 {
@@ -69,4 +72,10 @@ void sensors_data_filter(void)
 		sensors_data.heading = 360.0 + sensors_data.heading;
 	else if (sensors_data.heading >= 180.0)
 		sensors_data.heading = -360.0 + sensors_data.heading;
+	
+	double motors_speed = (motors->left + motors->right) / 200.0;
+	if (sensors_data.dist_ratio > 0.0)
+		sensors_data.dist_traveled += sensors_data.dist_ratio * motors_speed;
+	else
+		sensors_data.dist_traveled += SENSORS_DEFAULT_DIST_RATIO * motors_speed;
 }

@@ -1,4 +1,5 @@
 AM_CFLAGS = -Wall -pedantic
+AM_LDFLAGS = -lm
 
 bin_PROGRAMS = obstacle_avoidance
 obstacle_avoidance_SOURCES = \

@@ -41,6 +41,8 @@ typedef struct {
     int encoder_fd;
     encoder_t* encoder;
     double heading;
+    double dist_ratio;
+    double dist_traveled;
 } sensors_data_t;
 
 extern sensors_data_t sensors_data;
