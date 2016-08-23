@@ -14,7 +14,7 @@ void scheduler_init(int priority)
 	sch_param.__sched_priority = priority;
 	if (sched_setscheduler(0, SCHED_FIFO, &sch_param) < 0)
 	{
-		syslog(LOG_DEBUG, "Cannot set priority!");
+		syslog(LOG_ERR, "Cannot set priority!");
 		exit(1);
 	}
 	

@@ -22,7 +22,7 @@ int sensors_data_init(void)
 			(void*) &sensors_data.dist, sizeof(distance_t)) < 0)
 	{
 		sensors_data_destroy();
-		syslog(LOG_DEBUG, "Cannot initialize sensors subsystem.");
+		syslog(LOG_ERR, "Cannot initialize sensors subsystem.");
 		return -1;
 	}
 	
@@ -30,7 +30,7 @@ int sensors_data_init(void)
 			(void*) &sensors_data.accel, sizeof(accel_t)) < 0)
 	{
 		sensors_data_destroy();
-		syslog(LOG_DEBUG, "Cannot initialize sensors subsystem.");
+		syslog(LOG_ERR, "Cannot initialize sensors subsystem.");
 		return -1;
 	}
 	
@@ -38,7 +38,7 @@ int sensors_data_init(void)
 			(void*) &sensors_data.gyro_mag, sizeof(gyro_mag_t)) < 0)
 	{
 		sensors_data_destroy();
-		syslog(LOG_DEBUG, "Cannot initialize sensors subsystem.");
+		syslog(LOG_ERR, "Cannot initialize sensors subsystem.");
 		return -1;
 	}
 	
@@ -46,7 +46,7 @@ int sensors_data_init(void)
 			(void*) &sensors_data.encoder, sizeof(encoder_t)) < 0)
 	{
 		sensors_data_destroy();
-		syslog(LOG_DEBUG, "Cannot initialize sensors subsystem.");
+		syslog(LOG_ERR, "Cannot initialize sensors subsystem.");
 		return -1;
 	}
 	
