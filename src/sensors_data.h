@@ -25,6 +25,7 @@ typedef struct {
 
 typedef struct {
     int encoder_pid;
+    int clear;
     float right_dist;
     float right_speed;
     float left_dist;
@@ -41,8 +42,7 @@ typedef struct {
     int encoder_fd;
     encoder_t* encoder;
     double heading;
-    double dist_ratio;
-    double dist_traveled;
+    double odo;
 } sensors_data_t;
 
 extern sensors_data_t sensors_data;
@@ -50,5 +50,6 @@ extern sensors_data_t sensors_data;
 int sensors_data_init(void);
 void sensors_data_destroy(void);
 void sensors_data_filter(void);
+void sensors_data_reset_odo(void);
 
 #endif /* SENSORS_DATA_H_ */

@@ -11,7 +11,7 @@
 #define MOTORS_SPEED 70
 #define MAX_HEADING 60
 #define HEADING_OFFSET 5
-#define PATHFINDER_DIST 25
+#define PATHFINDER_DIST 30
 #define HEADING_PREFER_BASE 1.25
 #define HEADING_PREFER_FACTOR 0.25
 
@@ -59,7 +59,7 @@ static inline void pathfinder_filter_distances(void)
 		}
 		else if (distances[i] > 200)
 			distances[i] = 200;
-		
+
 		if (angles[i] == 0.0)
 			angles[i] = -MAX_HEADING + i * angles_step;
 	}
@@ -103,6 +103,7 @@ void pathfinder_action(void)
 	{
 	case PATHFINDER_NONE:
 		sensors_data.heading = 0;
+		sensors_data_reset_odo();
 		initial_obstacle_distance = sensors_data.dist->distance;
 		memset((void*) distances, 0, sizeof(distances));
 		memset((void*) weights, 0, sizeof(weights));
@@ -176,7 +177,7 @@ void pathfinder_action(void)
 		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
 		{
 			motors_write(0, 0);
-			sensors_data.dist_traveled = 0.0;
+			sensors_data_reset_odo();
 			prev_dist = 0.0;
 			current_heading = desired_heading;
 			heading_sin = sin(current_heading * M_PI / 180.0);
@@ -186,14 +187,12 @@ void pathfinder_action(void)
 		}
 		break;
 	case PATHFINDER_DRIVE:
-		position_x += heading_sin * (sensors_data.dist_traveled - prev_dist);
-		position_y += heading_cos * (sensors_data.dist_traveled - prev_dist);
-		prev_dist = sensors_data.dist_traveled;
-		
-		if (sensors_data.dist->distance <= 10)
-			motors_write(0, 0);
+		position_x += heading_sin * (sensors_data.odo - prev_dist);
+		position_y += heading_cos * (sensors_data.odo - prev_dist);
+		prev_dist = sensors_data.odo;
 
-		if (sensors_data.dist_traveled >= PATHFINDER_DIST)
+		if (sensors_data.odo >= PATHFINDER_DIST ||
+			sensors_data.dist->distance <= 10)
 		{
 			motors_write(0, 0);
 			desired_heading = 0.0;
@@ -204,12 +203,12 @@ void pathfinder_action(void)
 				motors_write(MOTORS_SPEED, -MOTORS_SPEED);
 			pathfinder_mode = PATHFINDER_RESET_HEADING;
 		}
-		
+
 		if (fabs(position_x) < 2 && position_y > initial_obstacle_distance)
 		{
 			motors_write(0, 0);
 			desired_heading = 0.0;
-			
+
 			if (desired_heading < sensors_data.heading)
 				motors_write(-MOTORS_SPEED, MOTORS_SPEED);
 			else
@@ -221,7 +220,7 @@ void pathfinder_action(void)
 		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
 		{
 			motors_write(0, 0);
-			sensors_data.dist_traveled = 0.0;
+			sensors_data_reset_odo();
 			prev_dist = 0.0;
 
 			sensors_data.heading = 0;
