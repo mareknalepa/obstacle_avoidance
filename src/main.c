@@ -14,13 +14,31 @@ static void signal_handler(int signum);
 int main(int argc, char** argv)
 {
 	int option = 0;
+	int option_index = 0;
 	int debug = 0;
+	int algorithm = 1;
 
 	/* Parse command line options */
-	while ((option = getopt(argc, argv, "d")) != -1)
+	struct option long_options[] = {
+		{"debug",		no_argument,		0,	'd'},
+		{"algorithm",	required_argument,	0,	'a'},
+		{0,				0,					0,	0},
+	};
+	opterr = 0;
+
+	while ((option = getopt_long(argc, argv, "a:d", long_options,
+								 &option_index)) != -1)
 	{
 		switch (option)
 		{
+		case 'a':
+			algorithm = atoi(optarg);
+			if (algorithm == 0 || algorithm < 1 || algorithm > 2)
+			{
+				fprintf(stderr, "Invalid argument.\n");
+				return -1;
+			}
+			break;
 		case 'd':
 			debug = 1;
 			break;
@@ -28,13 +46,13 @@ int main(int argc, char** argv)
 			break;
 		}
 	}
-	
+
 	/* Set process priority */
 	scheduler_init(98);
 
 	/* Init daemon */
 	daemon_init("obstacle_avoidance", debug, "/var/run/obstacle_avoidance.pid");
-	
+
 	/* Register signal handlers */
     signal(SIGINT, &signal_handler);
     signal(SIGTERM, &signal_handler);
@@ -42,11 +60,11 @@ int main(int argc, char** argv)
 	/* Init sensors subsystem */
 	if (sensors_data_init() < 0)
 		return 1;
-	
+
 	/* Init inter-process communication subsystem */
 	if (ipc_init() < 0)
 		return 1;
-	
+
 	/* Init motors driver */
 	if (motors_init() < 0)
 		return 1;
@@ -55,6 +73,8 @@ int main(int argc, char** argv)
 	mode_register_handler(MODE_SUPERVISOR, &supervisor_action);
 	mode_register_handler(MODE_BRAKE, &brake_action);
 	mode_register_handler(MODE_PATHFINDER, &pathfinder_action);
+
+	syslog(LOG_INFO, "Selected obstacle avoidance algorithm: %d.", algorithm);
 
 	/* Begin infinite loop */
 	while (1)
