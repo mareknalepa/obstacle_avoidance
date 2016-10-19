@@ -1,4 +1,4 @@
-#include "pathfinder.h"
+#include "pathfinder_a1.h"
 
 #include "common.h"
 #include "sensors_data.h"
@@ -8,14 +8,27 @@
 #include "brake.h"
 #include <math.h>
 
+typedef enum {
+    PATHFINDER_A1_NONE,
+    PATHFINDER_A1_LOOKUP_LEFT_ROTATE,
+    PATHFINDER_A1_LOOKUP_LEFT_RETURN,
+    PATHFINDER_A1_LOOKUP_RIGHT_ROTATE,
+    PATHFINDER_A1_LOOKUP_RIGHT_RETURN,
+    PATHFINDER_A1_PROCESS_SAMPLES,
+    PATHFINDER_A1_SET_HEADING,
+    PATHFINDER_A1_DRIVE,
+    PATHFINDER_A1_RESET_HEADING,
+    PATHFINDER_A1_FINISH,
+} pathfinder_a1_mode_t;
+
+pathfinder_a1_mode_t pathfinder_a1_mode = PATHFINDER_A1_NONE;
+
 #define MOTORS_SPEED 70
 #define MAX_HEADING 60
 #define HEADING_OFFSET 5
-#define PATHFINDER_DIST 30
+#define PATHFINDER_A1_DIST 30
 #define HEADING_PREFER_BASE 1.25
 #define HEADING_PREFER_FACTOR 0.25
-
-pathfinder_mode_t pathfinder_mode = PATHFINDER_NONE;
 
 #define MAX_SAMPLES 48
 static double angles[MAX_SAMPLES];
@@ -31,7 +44,7 @@ static double heading_cos = 1.0;
 static double current_heading = 0.0;
 static double desired_heading = 0.0;
 
-static inline void pathfinder_collect_distance(void)
+static inline void pathfinder_a1_collect_distance(void)
 {
 	int index = (sensors_data.heading + 60) * MAX_SAMPLES / (MAX_HEADING * 2);
 	if (index < 0)
@@ -42,7 +55,7 @@ static inline void pathfinder_collect_distance(void)
 	distances[index] = sensors_data.dist->distance;
 }
 
-static inline void pathfinder_filter_distances(void)
+static inline void pathfinder_a1_filter_distances(void)
 {
 	double angles_step = (MAX_HEADING * 2.0) / (MAX_SAMPLES - 1);
 
@@ -65,7 +78,7 @@ static inline void pathfinder_filter_distances(void)
 	}
 }
 
-static inline void pathfinder_calculate_weights(void)
+static inline void pathfinder_a1_calculate_weights(void)
 {
 	weights[0] = (distances[0] * 3 + distances[1] * 2 + distances[2]) / 6;
 	weights[1] = (distances[0] * 2 + distances[1] * 3 + distances[2] * 2 +
@@ -97,11 +110,11 @@ static inline void pathfinder_calculate_weights(void)
 	}
 }
 
-void pathfinder_action(void)
+void pathfinder_a1_action(void)
 {
-	switch (pathfinder_mode)
+	switch (pathfinder_a1_mode)
 	{
-	case PATHFINDER_NONE:
+	case PATHFINDER_A1_NONE:
 		sensors_data.heading = 0;
 		sensors_data_reset_odo();
 		initial_obstacle_distance = sensors_data.dist->distance;
@@ -112,50 +125,50 @@ void pathfinder_action(void)
 		heading_sin = 0.0;
 		heading_cos = 1.0;
 		motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-		pathfinder_mode = PATHFINDER_LOOKUP_LEFT_ROTATE;
-		syslog(LOG_INFO, "Pathfinder: sampling environment...");
+		pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
+		syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
 		break;
-	case PATHFINDER_LOOKUP_LEFT_ROTATE:
-		pathfinder_collect_distance();
+	case PATHFINDER_A1_LOOKUP_LEFT_ROTATE:
+		pathfinder_a1_collect_distance();
 
 		if (sensors_data.heading <= -MAX_HEADING)
 		{
 			motors_write(0, 0);
 			motors_write(MOTORS_SPEED, -MOTORS_SPEED);
-			pathfinder_mode = PATHFINDER_LOOKUP_LEFT_RETURN;
+			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_RETURN;
 		}
 		break;
-	case PATHFINDER_LOOKUP_LEFT_RETURN:
-		pathfinder_collect_distance();
+	case PATHFINDER_A1_LOOKUP_LEFT_RETURN:
+		pathfinder_a1_collect_distance();
 
 		if (sensors_data.heading >= -HEADING_OFFSET)
 		{
-			pathfinder_mode = PATHFINDER_LOOKUP_RIGHT_ROTATE;
+			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RIGHT_ROTATE;
 		}
 		break;
-	case PATHFINDER_LOOKUP_RIGHT_ROTATE:
-		pathfinder_collect_distance();
+	case PATHFINDER_A1_LOOKUP_RIGHT_ROTATE:
+		pathfinder_a1_collect_distance();
 
 		if (sensors_data.heading >= MAX_HEADING)
 		{
 			motors_write(0, 0);
 			motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-			pathfinder_mode = PATHFINDER_LOOKUP_RIGHT_RETURN;
+			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RIGHT_RETURN;
 		}
 		break;
-	case PATHFINDER_LOOKUP_RIGHT_RETURN:
-		pathfinder_collect_distance();
+	case PATHFINDER_A1_LOOKUP_RIGHT_RETURN:
+		pathfinder_a1_collect_distance();
 
 		if (sensors_data.heading <= HEADING_OFFSET)
 		{
 			motors_write(0, 0);
 			sensors_data.heading = 0.0;
-			pathfinder_mode = PATHFINDER_PROCESS_SAMPLES;
+			pathfinder_a1_mode = PATHFINDER_A1_PROCESS_SAMPLES;
 		}
 		break;
-	case PATHFINDER_PROCESS_SAMPLES:
-		pathfinder_filter_distances();
-		pathfinder_calculate_weights();
+	case PATHFINDER_A1_PROCESS_SAMPLES:
+		pathfinder_a1_filter_distances();
+		pathfinder_a1_calculate_weights();
 
 		int best_index = 0;
 		for (int i = 0; i < MAX_SAMPLES; ++i)
@@ -165,15 +178,15 @@ void pathfinder_action(void)
 		}
 		desired_heading = angles[best_index];
 
-		syslog(LOG_INFO, "Pathfinder: choosing heading %.2f", desired_heading);
+		syslog(LOG_INFO, "Pathfinder A1: choosing heading %.2f", desired_heading);
 
 		if (desired_heading < sensors_data.heading)
 			motors_write(-MOTORS_SPEED, MOTORS_SPEED);
 		else
 			motors_write(MOTORS_SPEED, -MOTORS_SPEED);
-		pathfinder_mode = PATHFINDER_SET_HEADING;
+		pathfinder_a1_mode = PATHFINDER_A1_SET_HEADING;
 		break;
-	case PATHFINDER_SET_HEADING:
+	case PATHFINDER_A1_SET_HEADING:
 		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
 		{
 			motors_write(0, 0);
@@ -183,15 +196,15 @@ void pathfinder_action(void)
 			heading_sin = sin(current_heading * M_PI / 180.0);
 			heading_cos = cos(current_heading * M_PI / 180.0);
 			motors_write(MOTORS_SPEED, MOTORS_SPEED);
-			pathfinder_mode = PATHFINDER_DRIVE;
+			pathfinder_a1_mode = PATHFINDER_A1_DRIVE;
 		}
 		break;
-	case PATHFINDER_DRIVE:
+	case PATHFINDER_A1_DRIVE:
 		position_x += heading_sin * (sensors_data.odo - prev_dist);
 		position_y += heading_cos * (sensors_data.odo - prev_dist);
 		prev_dist = sensors_data.odo;
 
-		if (sensors_data.odo >= PATHFINDER_DIST ||
+		if (sensors_data.odo >= PATHFINDER_A1_DIST ||
 			sensors_data.dist->distance <= 10)
 		{
 			motors_write(0, 0);
@@ -201,7 +214,7 @@ void pathfinder_action(void)
 				motors_write(-MOTORS_SPEED, MOTORS_SPEED);
 			else
 				motors_write(MOTORS_SPEED, -MOTORS_SPEED);
-			pathfinder_mode = PATHFINDER_RESET_HEADING;
+			pathfinder_a1_mode = PATHFINDER_A1_RESET_HEADING;
 		}
 
 		if (fabs(position_x) < 2 && position_y > initial_obstacle_distance)
@@ -213,10 +226,10 @@ void pathfinder_action(void)
 				motors_write(-MOTORS_SPEED, MOTORS_SPEED);
 			else
 				motors_write(MOTORS_SPEED, -MOTORS_SPEED);
-			pathfinder_mode = PATHFINDER_FINISH;
+			pathfinder_a1_mode = PATHFINDER_A1_FINISH;
 		}
 		break;
-	case PATHFINDER_RESET_HEADING:
+	case PATHFINDER_A1_RESET_HEADING:
 		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
 		{
 			motors_write(0, 0);
@@ -227,15 +240,15 @@ void pathfinder_action(void)
 			memset((void*) distances, 0, sizeof (distances));
 			memset((void*) weights, 0, sizeof (weights));
 			motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-			pathfinder_mode = PATHFINDER_LOOKUP_LEFT_ROTATE;
-			syslog(LOG_INFO, "Pathfinder: sampling environment...");
+			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
+			syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
 		}
 		break;
-	case PATHFINDER_FINISH:
+	case PATHFINDER_A1_FINISH:
 		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
 		{
 			motors_write(0, 0);
-			pathfinder_mode = PATHFINDER_NONE;
+			pathfinder_a1_mode = PATHFINDER_A1_NONE;
 			mode_switch(MODE_SUPERVISOR);
 			if (ipc_raspberry_daemon_attach() < 0)
 				syslog(LOG_ERR, "Cannot enter supervisor mode.");

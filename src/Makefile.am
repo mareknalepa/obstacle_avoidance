@@ -9,7 +9,8 @@ obstacle_avoidance_SOURCES = \
 	main.c \
 	modes.c \
 	motors.c \
-	pathfinder.c \
+	pathfinder_a1.c \
+	pathfinder_a2.c \
 	scheduler.c \
 	sensors_data.c \
 	shared_memory.c \
@@ -22,7 +23,8 @@ noinst_HEADERS = \
 	ipc.h \
 	modes.h \
 	motors.h \
-	pathfinder.h \
+	pathfinder_a1.h \
+	pathfinder_a2.h \
 	scheduler.h \
 	sensors_data.h \
 	shared_memory.h \

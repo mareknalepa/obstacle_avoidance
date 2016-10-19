@@ -7,7 +7,8 @@
 #include "motors.h"
 #include "supervisor.h"
 #include "brake.h"
-#include "pathfinder.h"
+#include "pathfinder_a1.h"
+#include "pathfinder_a2.h"
 
 static void signal_handler(int signum);
 
@@ -72,7 +73,19 @@ int main(int argc, char** argv)
 	/* Register application modes actions */
 	mode_register_handler(MODE_SUPERVISOR, &supervisor_action);
 	mode_register_handler(MODE_BRAKE, &brake_action);
-	mode_register_handler(MODE_PATHFINDER, &pathfinder_action);
+
+	switch (algorithm)
+	{
+	case 1:
+		mode_register_handler(MODE_PATHFINDER, &pathfinder_a1_action);
+		break;
+	case 2:
+		mode_register_handler(MODE_PATHFINDER, &pathfinder_a2_action);
+		break;
+	default:
+		mode_register_handler(MODE_PATHFINDER, &pathfinder_a1_action);
+		break;
+	}
 
 	syslog(LOG_INFO, "Selected obstacle avoidance algorithm: %d.", algorithm);
 
