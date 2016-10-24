@@ -74,11 +74,12 @@ void sensors_data_filter(void)
 		sensors_data.heading = -360.0 + sensors_data.heading;
 
 	sensors_data.odo = (sensors_data.encoder->left_dist +
-		sensors_data.encoder->right_dist) * 100.0 / 2.0;
+		sensors_data.encoder->right_dist) * 100.0 / 2.0 -
+		sensors_data.odo_adjustment;
 }
 
 void sensors_data_reset_odo(void)
 {
-	sensors_data.encoder->clear = 1;
-	sensors_data.odo = 0.0;
+	sensors_data.odo_adjustment = (sensors_data.encoder->left_dist +
+		sensors_data.encoder->right_dist) * 100.0 / 2.0;
 }
