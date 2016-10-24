@@ -133,13 +133,18 @@ void pathfinder_a2_action(void)
 			(sensors_data.odo - prev_odo);
 		prev_odo = sensors_data.odo;
 
-		if (sensors_data.odo >= desired_distance)
+		if (sensors_data.odo >= desired_distance ||
+			sensors_data.dist->distance <= 20)
 		{
 			motors_write(0, 0);
 			sensors_data_reset_odo();
 			prev_odo = 0;
 			pathfinder_a2_mode = PATHFINDER_A2_ROTATE_TO_CENTER;
-			syslog(LOG_INFO, "Pathfinder A2: reached obstacle edge.");
+			if (sensors_data.odo >= desired_distance)
+				syslog(LOG_INFO, "Pathfinder A2: reached obstacle edge.");
+			else
+				syslog(LOG_INFO, "Pathfinder A2: stopped in front of obstacle.");
+
 			if (position_x < 0)
 				rotate_dir = 1.0;
 			else
