@@ -24,6 +24,7 @@ pathfinder_a2_mode_t pathfinder_a2_mode = PATHFINDER_A2_NONE;
 #define HEADING_OFFSET 5
 #define VEHICLE_WIDTH 20
 #define VEHICLE_LENGTH 20
+#define OBSTACLE_CLEARANCE 5
 
 static int rotate_cycle = 0;
 static int rotate_dir = -1.0;
@@ -64,19 +65,20 @@ void pathfinder_a2_action(void)
 			motors_write(0, 0);
 		else
 			motors_write(rotate_dir * MOTORS_SPEED, -rotate_dir * MOTORS_SPEED);
-		++rotate_cycle;
-		rotate_cycle %= 3;
+		rotate_cycle = !rotate_cycle;
 
 		if (rotate_dir == -1.0 && sensors_data.heading <= -MAX_HEADING)
 		{
 			motors_write(0, 0);
 			syslog(LOG_INFO, "Pathfinder A2: reached max left heading.");
+			rotate_dir = 1.0;
 			motors_write(MOTORS_SPEED, -MOTORS_SPEED);
 		}
 		if (rotate_dir == 1.0 && sensors_data.heading >= MAX_HEADING)
 		{
 			motors_write(0, 0);
 			syslog(LOG_INFO, "Pathfinder A2: reached max right heading.");
+			rotate_dir = -1.0;
 			pathfinder_a2_mode = PATHFINDER_A2_FINISH;
 		}
 		if (samples_number > 2)
@@ -103,11 +105,20 @@ void pathfinder_a2_action(void)
 			if (fabs(predicted_distance - sensors_data.dist->distance)
 				> tolerance && sensors_data.dist->distance > 40)
 			{
-				desired_heading = sensors_data.heading + rotate_dir * 15.0;
-				motors_write(rotate_dir * MOTORS_SPEED, -rotate_dir *
-					MOTORS_SPEED);
 				syslog(LOG_INFO, "Pathfinder A2: found edge at "
 					"direction %.1f.", sensors_data.heading);
+
+				double clearance_heading = fabs(180.0 / M_PI *
+					asin((VEHICLE_WIDTH / 2.0 + OBSTACLE_CLEARANCE) /
+					sensors_data.dist->distance));
+
+				if (rotate_dir == -1)
+					desired_heading = sensors_data.heading - clearance_heading;
+				else
+					desired_heading = sensors_data.heading + clearance_heading;
+
+				motors_write(rotate_dir * MOTORS_SPEED, -rotate_dir *
+					MOTORS_SPEED);
 				desired_distance = prev_distances[prev_index] + VEHICLE_LENGTH;
 				sensors_data_reset_odo();
 				prev_odo = 0;
