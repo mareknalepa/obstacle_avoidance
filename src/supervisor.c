@@ -10,7 +10,7 @@
 void supervisor_action(void)
 {
 	if ((motors->left > 0 || motors->right > 0) &&
-		sensors_data.dist->distance < DISTANCE_TRESHOLD)
+		sensors_data.distance < DISTANCE_TRESHOLD)
 	{
 		mode_switch(MODE_BRAKE);
 		if (ipc_raspberry_daemon_detach() < 0)

@@ -102,15 +102,15 @@ void pathfinder_a2_action(void)
 				180.0);
 			double tolerance = predicted_distance * 0.1;
 
-			if (fabs(predicted_distance - sensors_data.dist->distance)
-				> tolerance && sensors_data.dist->distance > 40)
+			if (fabs(predicted_distance - sensors_data.distance)
+				> tolerance && sensors_data.distance > 40)
 			{
 				syslog(LOG_INFO, "Pathfinder A2: found edge at "
 					"direction %.1f.", sensors_data.heading);
 
 				double clearance_heading = fabs(180.0 / M_PI *
 					asin((VEHICLE_WIDTH / 2.0 + OBSTACLE_CLEARANCE) /
-					sensors_data.dist->distance));
+					sensors_data.distance));
 
 				if (rotate_dir == -1)
 					desired_heading = sensors_data.heading - clearance_heading;
@@ -127,7 +127,7 @@ void pathfinder_a2_action(void)
 		}
 
 		prev_index = !prev_index;
-		prev_distances[prev_index] = sensors_data.dist->distance;
+		prev_distances[prev_index] = sensors_data.distance;
 		prev_headings[prev_index] = sensors_data.heading;
 		++samples_number;
 		break;
@@ -145,7 +145,7 @@ void pathfinder_a2_action(void)
 		prev_odo = sensors_data.odo;
 
 		if (sensors_data.odo >= desired_distance ||
-			sensors_data.dist->distance <= 20)
+			sensors_data.distance <= 20)
 		{
 			motors_write(0, 0);
 			sensors_data_reset_odo();
@@ -191,7 +191,7 @@ void pathfinder_a2_action(void)
 
 			double distance_to_course = position_x /
 				sin((90.0 - sensors_data.heading) * M_PI / 180.0);
-			if (sensors_data.dist->distance > fabs(distance_to_course))
+			if (sensors_data.distance > fabs(distance_to_course))
 			{
 				desired_distance = distance_to_course * 2;
 				pathfinder_a2_mode = PATHFINDER_A2_DRIVE_FORWARD;
@@ -205,7 +205,7 @@ void pathfinder_a2_action(void)
 				else
 					rotate_dir = 1.0;
 
-				prev_distances[0] = sensors_data.dist->distance;
+				prev_distances[0] = sensors_data.distance;
 				prev_distances[1] = 0;
 				prev_headings[0] = sensors_data.heading;
 				prev_headings[1] = 0.0;

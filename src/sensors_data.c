@@ -67,6 +67,11 @@ void sensors_data_destroy(void)
 
 void sensors_data_filter(void)
 {
+	if (sensors_data.dist->distance > 32000 || sensors_data.dist->distance < 5)
+		sensors_data.distance = 0.0;
+	else
+		sensors_data.distance = sensors_data.dist->distance;
+
 	sensors_data.heading -= sensors_data.gyro_mag->gyro_yaw / 10;
 	if (sensors_data.heading <= -180.0)
 		sensors_data.heading = 360.0 + sensors_data.heading;

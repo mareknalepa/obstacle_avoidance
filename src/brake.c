@@ -17,8 +17,8 @@ void brake_action(void)
 		brake_initial_right = motors->right;
 	}
 	
-	int distance = sensors_data.dist->distance;
-	float ratio = ((float) (distance - DISTANCE_STOP) / DISTANCE_DIFF);
+	float ratio = ((float) (sensors_data.distance - DISTANCE_STOP) /
+		DISTANCE_DIFF);
 	
 	if (ratio >= 1.0f)
 	{

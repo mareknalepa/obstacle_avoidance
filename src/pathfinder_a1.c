@@ -52,7 +52,7 @@ static inline void pathfinder_a1_collect_distance(void)
 	else if (index >= MAX_SAMPLES)
 		index = MAX_SAMPLES - 1;
 	angles[index] = sensors_data.heading;
-	distances[index] = sensors_data.dist->distance;
+	distances[index] = sensors_data.distance;
 }
 
 static inline void pathfinder_a1_filter_distances(void)
@@ -117,7 +117,7 @@ void pathfinder_a1_action(void)
 	case PATHFINDER_A1_NONE:
 		sensors_data.heading = 0;
 		sensors_data_reset_odo();
-		initial_obstacle_distance = sensors_data.dist->distance;
+		initial_obstacle_distance = sensors_data.distance;
 		memset((void*) distances, 0, sizeof(distances));
 		memset((void*) weights, 0, sizeof(weights));
 		position_x = 0.0;
@@ -205,7 +205,7 @@ void pathfinder_a1_action(void)
 		prev_dist = sensors_data.odo;
 
 		if (sensors_data.odo >= PATHFINDER_A1_DIST ||
-			sensors_data.dist->distance <= 10)
+			sensors_data.distance <= 10)
 		{
 			motors_write(0, 0);
 			desired_heading = 0.0;

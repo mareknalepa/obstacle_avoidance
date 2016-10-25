@@ -41,6 +41,7 @@ typedef struct {
     gyro_mag_t* gyro_mag;
     int encoder_fd;
     encoder_t* encoder;
+    double distance;
     double heading;
     double odo;
     double odo_adjustment;
