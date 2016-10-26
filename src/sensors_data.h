@@ -43,6 +43,7 @@ typedef struct {
     encoder_t* encoder;
     double distance;
     double heading;
+    double heading_rate;
     double odo;
     double odo_adjustment;
 } sensors_data_t;

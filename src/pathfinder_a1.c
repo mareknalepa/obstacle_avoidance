@@ -4,28 +4,24 @@
 #include "sensors_data.h"
 #include "ipc.h"
 #include "modes.h"
-#include "motors.h"
+#include "steering.h"
 #include "brake.h"
 #include <math.h>
 
 typedef enum {
     PATHFINDER_A1_NONE,
     PATHFINDER_A1_LOOKUP_LEFT_ROTATE,
-    PATHFINDER_A1_LOOKUP_LEFT_RETURN,
     PATHFINDER_A1_LOOKUP_RIGHT_ROTATE,
-    PATHFINDER_A1_LOOKUP_RIGHT_RETURN,
+    PATHFINDER_A1_LOOKUP_RETURN,
     PATHFINDER_A1_PROCESS_SAMPLES,
     PATHFINDER_A1_SET_HEADING,
     PATHFINDER_A1_DRIVE,
-    PATHFINDER_A1_RESET_HEADING,
     PATHFINDER_A1_FINISH,
 } pathfinder_a1_mode_t;
 
 pathfinder_a1_mode_t pathfinder_a1_mode = PATHFINDER_A1_NONE;
 
-#define MOTORS_SPEED 70
 #define MAX_HEADING 60
-#define HEADING_OFFSET 5
 #define PATHFINDER_A1_DIST 30
 #define HEADING_PREFER_BASE 1.25
 #define HEADING_PREFER_FACTOR 0.25
@@ -41,8 +37,6 @@ static double position_x = 0.0;
 static double position_y = 0.0;
 static double heading_sin = 0.0;
 static double heading_cos = 1.0;
-static double current_heading = 0.0;
-static double desired_heading = 0.0;
 
 static inline void pathfinder_a1_collect_distance(void)
 {
@@ -124,47 +118,36 @@ void pathfinder_a1_action(void)
 		position_y = 0.0;
 		heading_sin = 0.0;
 		heading_cos = 1.0;
-		motors_write(-MOTORS_SPEED, MOTORS_SPEED);
+		steering.mode = STEERING_ROTATE;
+		steering.desired_heading = -MAX_HEADING;
 		pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
 		syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
 		break;
 	case PATHFINDER_A1_LOOKUP_LEFT_ROTATE:
 		pathfinder_a1_collect_distance();
 
-		if (sensors_data.heading <= -MAX_HEADING)
+		if (steering.mode == STEERING_STOP)
 		{
-			motors_write(0, 0);
-			motors_write(MOTORS_SPEED, -MOTORS_SPEED);
-			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_RETURN;
-		}
-		break;
-	case PATHFINDER_A1_LOOKUP_LEFT_RETURN:
-		pathfinder_a1_collect_distance();
-
-		if (sensors_data.heading >= -HEADING_OFFSET)
-		{
+			steering.mode = STEERING_ROTATE;
+			steering.desired_heading = MAX_HEADING;
 			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RIGHT_ROTATE;
 		}
 		break;
 	case PATHFINDER_A1_LOOKUP_RIGHT_ROTATE:
 		pathfinder_a1_collect_distance();
 
-		if (sensors_data.heading >= MAX_HEADING)
+		if (steering.mode == STEERING_STOP)
 		{
-			motors_write(0, 0);
-			motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RIGHT_RETURN;
+			steering.mode = STEERING_ROTATE;
+			steering.desired_heading = 0.0;
+			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RETURN;
 		}
 		break;
-	case PATHFINDER_A1_LOOKUP_RIGHT_RETURN:
+	case PATHFINDER_A1_LOOKUP_RETURN:
 		pathfinder_a1_collect_distance();
 
-		if (sensors_data.heading <= HEADING_OFFSET)
-		{
-			motors_write(0, 0);
-			sensors_data.heading = 0.0;
+		if (steering.mode == STEERING_STOP)
 			pathfinder_a1_mode = PATHFINDER_A1_PROCESS_SAMPLES;
-		}
 		break;
 	case PATHFINDER_A1_PROCESS_SAMPLES:
 		pathfinder_a1_filter_distances();
@@ -176,26 +159,23 @@ void pathfinder_a1_action(void)
 			if (weights[i] > weights[best_index])
 				best_index = i;
 		}
-		desired_heading = angles[best_index];
+		steering.mode = STEERING_ROTATE;
+		steering.desired_heading = angles[best_index];
 
-		syslog(LOG_INFO, "Pathfinder A1: choosing heading %.2f", desired_heading);
-
-		if (desired_heading < sensors_data.heading)
-			motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-		else
-			motors_write(MOTORS_SPEED, -MOTORS_SPEED);
+		syslog(LOG_INFO, "Pathfinder A1: choosing heading %.2f",
+			 steering.desired_heading);
 		pathfinder_a1_mode = PATHFINDER_A1_SET_HEADING;
 		break;
 	case PATHFINDER_A1_SET_HEADING:
-		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
+		if (steering.mode == STEERING_STOP)
 		{
-			motors_write(0, 0);
 			sensors_data_reset_odo();
 			prev_dist = 0.0;
-			current_heading = desired_heading;
-			heading_sin = sin(current_heading * M_PI / 180.0);
-			heading_cos = cos(current_heading * M_PI / 180.0);
-			motors_write(MOTORS_SPEED, MOTORS_SPEED);
+			heading_sin = sin(steering.desired_heading * M_PI / 180.0);
+			heading_cos = cos(steering.desired_heading * M_PI / 180.0);
+			steering.mode = STEERING_DRIVE_FORWARD;
+			steering.desired_odo = PATHFINDER_A1_DIST;
+			steering.desired_space = 25;
 			pathfinder_a1_mode = PATHFINDER_A1_DRIVE;
 		}
 		break;
@@ -203,51 +183,30 @@ void pathfinder_a1_action(void)
 		position_x += heading_sin * (sensors_data.odo - prev_dist);
 		position_y += heading_cos * (sensors_data.odo - prev_dist);
 		prev_dist = sensors_data.odo;
-
-		if (sensors_data.odo >= PATHFINDER_A1_DIST ||
-			sensors_data.distance <= 10)
+		
+		if (steering.mode == STEERING_STOP)
 		{
-			motors_write(0, 0);
-			desired_heading = 0.0;
+			sensors_data_reset_odo();
+			prev_dist = 0.0;
+			memset((void*) distances, 0, sizeof (distances));
+			memset((void*) weights, 0, sizeof (weights));
 
-			if (desired_heading < sensors_data.heading)
-				motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-			else
-				motors_write(MOTORS_SPEED, -MOTORS_SPEED);
-			pathfinder_a1_mode = PATHFINDER_A1_RESET_HEADING;
+			steering.mode = STEERING_ROTATE;
+			steering.desired_heading = -MAX_HEADING;
+			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
+			syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
 		}
 
 		if (fabs(position_x) < 2 && position_y > initial_obstacle_distance)
 		{
-			motors_write(0, 0);
-			desired_heading = 0.0;
-
-			if (desired_heading < sensors_data.heading)
-				motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-			else
-				motors_write(MOTORS_SPEED, -MOTORS_SPEED);
+			steering.mode = STEERING_ROTATE;
+			steering.desired_heading = 0.0;
 			pathfinder_a1_mode = PATHFINDER_A1_FINISH;
 		}
 		break;
-	case PATHFINDER_A1_RESET_HEADING:
-		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
-		{
-			motors_write(0, 0);
-			sensors_data_reset_odo();
-			prev_dist = 0.0;
-
-			sensors_data.heading = 0;
-			memset((void*) distances, 0, sizeof (distances));
-			memset((void*) weights, 0, sizeof (weights));
-			motors_write(-MOTORS_SPEED, MOTORS_SPEED);
-			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
-			syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
-		}
-		break;
 	case PATHFINDER_A1_FINISH:
-		if (fabs(desired_heading - sensors_data.heading) <= HEADING_OFFSET)
+		if (steering.mode == STEERING_STOP)
 		{
-			motors_write(0, 0);
 			pathfinder_a1_mode = PATHFINDER_A1_NONE;
 			mode_switch(MODE_SUPERVISOR);
 			if (ipc_raspberry_daemon_attach() < 0)

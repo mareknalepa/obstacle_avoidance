@@ -14,6 +14,7 @@ obstacle_avoidance_SOURCES = \
 	scheduler.c \
 	sensors_data.c \
 	shared_memory.c \
+	steering.c \
 	supervisor.c
 
 noinst_HEADERS = \
@@ -28,4 +29,5 @@ noinst_HEADERS = \
 	scheduler.h \
 	sensors_data.h \
 	shared_memory.h \
+	steering.h \
 	supervisor.h

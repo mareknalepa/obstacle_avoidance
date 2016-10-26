@@ -72,7 +72,9 @@ void sensors_data_filter(void)
 	else
 		sensors_data.distance = sensors_data.dist->distance;
 
+	double prev_heading = sensors_data.heading;
 	sensors_data.heading -= sensors_data.gyro_mag->gyro_yaw / 10;
+	sensors_data.heading_rate = sensors_data.heading - prev_heading;
 	if (sensors_data.heading <= -180.0)
 		sensors_data.heading = 360.0 + sensors_data.heading;
 	else if (sensors_data.heading >= 180.0)
@@ -85,6 +87,7 @@ void sensors_data_filter(void)
 
 void sensors_data_reset_odo(void)
 {
+	sensors_data.odo = 0.0;
 	sensors_data.odo_adjustment = (sensors_data.encoder->left_dist +
 		sensors_data.encoder->right_dist) * 100.0 / 2.0;
 }

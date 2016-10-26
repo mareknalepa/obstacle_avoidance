@@ -9,6 +9,7 @@
 #include "brake.h"
 #include "pathfinder_a1.h"
 #include "pathfinder_a2.h"
+#include "steering.h"
 
 static void signal_handler(int signum);
 
@@ -49,7 +50,7 @@ int main(int argc, char** argv)
 	}
 
 	/* Set process priority */
-	scheduler_init(98);
+	scheduler_init(89);
 
 	/* Init daemon */
 	daemon_init("obstacle_avoidance", debug, "/var/run/obstacle_avoidance.pid");
@@ -95,6 +96,7 @@ int main(int argc, char** argv)
 		scheduler_begin_cycle();
 		sensors_data_filter();
 		mode_action();
+		steering_cycle();
 		scheduler_end_cycle();
 	}
 
