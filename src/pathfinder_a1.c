@@ -21,7 +21,9 @@ typedef enum {
 
 pathfinder_a1_mode_t pathfinder_a1_mode = PATHFINDER_A1_NONE;
 
-#define MAX_HEADING 60
+#define MAX_HEADING 80
+#define MAX_HEADING_RATE_SEARCH 3.5
+#define MAX_HEADING_RATE_NORMAL 8.0
 #define PATHFINDER_A1_DIST 30
 #define HEADING_PREFER_BASE 1.25
 #define HEADING_PREFER_FACTOR 0.25
@@ -120,6 +122,7 @@ void pathfinder_a1_action(void)
 		heading_cos = 1.0;
 		steering.mode = STEERING_ROTATE;
 		steering.desired_heading = -MAX_HEADING;
+		steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
 		pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
 		syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
 		break;
@@ -130,6 +133,7 @@ void pathfinder_a1_action(void)
 		{
 			steering.mode = STEERING_ROTATE;
 			steering.desired_heading = MAX_HEADING;
+			steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
 			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RIGHT_ROTATE;
 		}
 		break;
@@ -140,6 +144,7 @@ void pathfinder_a1_action(void)
 		{
 			steering.mode = STEERING_ROTATE;
 			steering.desired_heading = 0.0;
+			steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
 			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RETURN;
 		}
 		break;
@@ -161,6 +166,7 @@ void pathfinder_a1_action(void)
 		}
 		steering.mode = STEERING_ROTATE;
 		steering.desired_heading = angles[best_index];
+		steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
 
 		syslog(LOG_INFO, "Pathfinder A1: choosing heading %.2f",
 			 steering.desired_heading);
@@ -183,7 +189,7 @@ void pathfinder_a1_action(void)
 		position_x += heading_sin * (sensors_data.odo - prev_dist);
 		position_y += heading_cos * (sensors_data.odo - prev_dist);
 		prev_dist = sensors_data.odo;
-		
+
 		if (steering.mode == STEERING_STOP)
 		{
 			sensors_data_reset_odo();
@@ -193,6 +199,7 @@ void pathfinder_a1_action(void)
 
 			steering.mode = STEERING_ROTATE;
 			steering.desired_heading = -MAX_HEADING;
+			steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
 			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
 			syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
 		}
@@ -201,6 +208,7 @@ void pathfinder_a1_action(void)
 		{
 			steering.mode = STEERING_ROTATE;
 			steering.desired_heading = 0.0;
+			steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
 			pathfinder_a1_mode = PATHFINDER_A1_FINISH;
 		}
 		break;

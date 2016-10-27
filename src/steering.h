@@ -10,9 +10,10 @@ typedef enum {
 
 typedef struct {
     steering_mode_t mode;
+    double desired_odo;
     double desired_space;
     double desired_heading;
-    double desired_odo;
+    double max_heading_rate;
 } steering_t;
 
 extern steering_t steering;

@@ -20,6 +20,8 @@ typedef enum {
 pathfinder_a2_mode_t pathfinder_a2_mode = PATHFINDER_A2_NONE;
 
 #define MAX_HEADING 80
+#define MAX_HEADING_RATE_SEARCH 3.5
+#define MAX_HEADING_RATE_NORMAL 8.0
 #define HEADING_OFFSET 5
 #define VEHICLE_WIDTH 20
 #define VEHICLE_LENGTH 20
@@ -54,6 +56,8 @@ void pathfinder_a2_action(void)
 
 		steering.mode = STEERING_ROTATE;
 		steering.desired_heading = -MAX_HEADING;
+		steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
+		steering.desired_space = 25.0;
 		pathfinder_a2_mode = PATHFINDER_A2_SEARCH_EDGE;
 		syslog(LOG_INFO, "Pathfinder A2: searching edge of obstacle (left)...");
 		break;
@@ -110,7 +114,7 @@ void pathfinder_a2_action(void)
 				else
 					steering.desired_heading = sensors_data.heading +
 						clearance_heading;
-				
+				steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
 				steering.desired_odo = prev_distances[prev_index] +
 					VEHICLE_LENGTH;
 				sensors_data_reset_odo();
@@ -128,6 +132,7 @@ void pathfinder_a2_action(void)
 		if (steering.mode == STEERING_STOP)
 		{
 			steering.mode = STEERING_DRIVE_FORWARD;
+			sensors_data_reset_odo();
 			pathfinder_a2_mode = PATHFINDER_A2_DRIVE_FORWARD;
 		}
 		break;
@@ -135,13 +140,13 @@ void pathfinder_a2_action(void)
 		position_x += sin(sensors_data.heading * M_PI / 180.0) *
 			(sensors_data.odo - prev_odo);
 		prev_odo = sensors_data.odo;
-		
+
 		if (steering.mode == STEERING_STOP)
 		{
 			sensors_data_reset_odo();
 			prev_odo = 0;
 			pathfinder_a2_mode = PATHFINDER_A2_ROTATE_TO_CENTER;
-			if (fabs(sensors_data.odo - steering.desired_odo) < 2.0)
+			if (fabs(sensors_data.odo - steering.desired_odo) < 5.0)
 				syslog(LOG_INFO, "Pathfinder A2: reached obstacle edge.");
 			else
 				syslog(LOG_INFO, "Pathfinder A2: stopped in front of obstacle.");
@@ -151,12 +156,14 @@ void pathfinder_a2_action(void)
 				steering.desired_heading = MAX_HEADING;
 			else
 				steering.desired_heading = -MAX_HEADING;
+			steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
 		}
 
 		if (can_resume && fabs(position_x) < 2.0)
 		{
 			steering.mode = STEERING_ROTATE;
 			steering.desired_heading = 0.0;
+			steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
 
 			if (sensors_data.heading > 0.0)
 				rotate_dir = -1.0;
@@ -176,6 +183,7 @@ void pathfinder_a2_action(void)
 			if (sensors_data.distance > fabs(distance_to_course))
 			{
 				steering.mode = STEERING_DRIVE_FORWARD;
+				sensors_data_reset_odo();
 				steering.desired_odo = distance_to_course * 2;
 				pathfinder_a2_mode = PATHFINDER_A2_DRIVE_FORWARD;
 			}
@@ -195,6 +203,7 @@ void pathfinder_a2_action(void)
 				prev_odo = 0;
 				steering.mode = STEERING_ROTATE;
 				steering.desired_heading = rotate_dir * MAX_HEADING;
+				steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
 				pathfinder_a2_mode = PATHFINDER_A2_SEARCH_EDGE;
 			}
 		}

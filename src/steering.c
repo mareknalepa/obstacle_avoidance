@@ -7,7 +7,7 @@
 
 steering_t steering = { 0 };
 
-#define DRIVE_MAX_OUT			70.0
+#define DRIVE_MAX_OUT			100.0
 #define DRIVE_P					6.0
 
 static double distance_err = 0.0;
@@ -29,7 +29,7 @@ static double heading_rate_steering = 0.0;
 #define HEADING_I				0.1
 #define HEADING_D				0.05
 #define HEADING_SUM_MAX			100.0
-#define HEADING_MAX_OUT			5.0
+#define HEADING_MAX_OUT_DEFAULT	5.0
 
 static double heading_err = 0.0;
 static double heading_prev = 0.0;
@@ -52,12 +52,24 @@ void steering_cycle(void)
 	switch (steering.mode)
 	{
 	case STEERING_STOP:
+		steering.max_heading_rate = HEADING_MAX_OUT_DEFAULT;
 		break;
 	case STEERING_BRAKE:
 		break;
 	case STEERING_DRIVE_FORWARD:
 		distance_err = steering.desired_odo - sensors_data.odo;
-		raw_steering = distance_err * DRIVE_P;
+		if (distance_err > sensors_data.distance - steering.desired_space)
+		{
+			if (sensors_data.distance > steering.desired_space)
+				raw_steering = (sensors_data.distance -
+					steering.desired_space) * DRIVE_P;
+			else
+				raw_steering = 0.0;
+		}
+		else
+		{
+			raw_steering = distance_err * DRIVE_P;
+		}
 		drive_steering = steering_trunc(distance_err * DRIVE_P,
 			-DRIVE_MAX_OUT, DRIVE_MAX_OUT);
 
@@ -86,7 +98,7 @@ void steering_cycle(void)
 		heading_prev = sensors_data.heading;
 
 		heading_rate_setpoint = steering_trunc(heading_rate_setpoint,
-			-HEADING_MAX_OUT, HEADING_MAX_OUT);
+			-steering.max_heading_rate, steering.max_heading_rate);
 
 		/* Inside PID controller (controls heading) */
 		heading_rate_err = heading_rate_setpoint - sensors_data.heading_rate;
