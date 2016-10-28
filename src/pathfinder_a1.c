@@ -25,7 +25,7 @@ pathfinder_a1_mode_t pathfinder_a1_mode = PATHFINDER_A1_NONE;
 #define MAX_HEADING 80
 #define MAX_HEADING_RATE_SEARCH 3.5
 #define MAX_HEADING_RATE_NORMAL 8.0
-#define PATHFINDER_A1_DIST 30
+#define PATHFINDER_A1_DIST 50
 #define HEADING_PREFER_BASE 1.25
 #define HEADING_PREFER_FACTOR 0.25
 
@@ -170,7 +170,18 @@ void pathfinder_a1_action(void)
 		{
 			sensors_data_reset_odo();
 			steering.mode = STEERING_DRIVE_FORWARD;
-			steering.desired_odo = PATHFINDER_A1_DIST;
+			double distance_to_course = sensors_data.position_x /
+				sin((90.0 - sensors_data.heading) * M_PI / 180.0);
+			if (sensors_data.position_y > initial_obstacle_distance &&
+				sensors_data.distance > fabs(distance_to_course))
+			{
+				steering.desired_odo = fabs(distance_to_course * 2);
+				syslog(LOG_DEBUG, "course clearance");
+			}
+			else
+			{
+				steering.desired_odo = PATHFINDER_A1_DIST;
+			}
 			steering.desired_space = 25;
 			pathfinder_a1_mode = PATHFINDER_A1_DRIVE;
 		}
