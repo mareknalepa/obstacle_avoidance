@@ -6,6 +6,7 @@
 #include "modes.h"
 #include "steering.h"
 #include "brake.h"
+#include "stats.h"
 #include <math.h>
 
 typedef enum {
@@ -32,8 +33,6 @@ static int prev_distances[2];
 static double prev_headings[2];
 static int prev_index = 0;
 static int samples_number = 0;
-static double position_x = 0.0;
-static int prev_odo = 0;
 static int can_resume = 0;
 
 void pathfinder_a2_action(void)
@@ -41,7 +40,8 @@ void pathfinder_a2_action(void)
 	switch (pathfinder_a2_mode)
 	{
 	case PATHFINDER_A2_NONE:
-		sensors_data.heading = 0;
+		stats_start();
+		sensors_data_reset_coordinates();
 		sensors_data_reset_odo();
 		rotate_dir = -1.0;
 		prev_distances[0] = 0;
@@ -50,8 +50,6 @@ void pathfinder_a2_action(void)
 		prev_headings[1] = 0.0;
 		prev_index = 0;
 		samples_number = 0;
-		position_x = 0.0;
-		prev_odo = 0;
 		can_resume = 0;
 
 		steering.mode = STEERING_ROTATE;
@@ -118,7 +116,6 @@ void pathfinder_a2_action(void)
 				steering.desired_odo = prev_distances[prev_index] +
 					VEHICLE_LENGTH;
 				sensors_data_reset_odo();
-				prev_odo = 0;
 				pathfinder_a2_mode = PATHFINDER_A2_AVOID_EDGE;
 			}
 		}
@@ -137,14 +134,9 @@ void pathfinder_a2_action(void)
 		}
 		break;
 	case PATHFINDER_A2_DRIVE_FORWARD:
-		position_x += sin(sensors_data.heading * M_PI / 180.0) *
-			(sensors_data.odo - prev_odo);
-		prev_odo = sensors_data.odo;
-
 		if (steering.mode == STEERING_STOP)
 		{
 			sensors_data_reset_odo();
-			prev_odo = 0;
 			pathfinder_a2_mode = PATHFINDER_A2_ROTATE_TO_CENTER;
 			if (fabs(sensors_data.odo - steering.desired_odo) < 5.0)
 				syslog(LOG_INFO, "Pathfinder A2: reached obstacle edge.");
@@ -152,14 +144,14 @@ void pathfinder_a2_action(void)
 				syslog(LOG_INFO, "Pathfinder A2: stopped in front of obstacle.");
 
 			steering.mode = STEERING_ROTATE;
-			if (position_x < 0)
+			if (sensors_data.position_x < 0)
 				steering.desired_heading = MAX_HEADING;
 			else
 				steering.desired_heading = -MAX_HEADING;
 			steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
 		}
 
-		if (can_resume && fabs(position_x) < 2.0)
+		if (can_resume && fabs(sensors_data.position_x) < 2.0)
 		{
 			steering.mode = STEERING_ROTATE;
 			steering.desired_heading = 0.0;
@@ -178,7 +170,7 @@ void pathfinder_a2_action(void)
 			can_resume = 1;
 			syslog(LOG_INFO, "Pathfinder A2: Rotated to center.");
 
-			double distance_to_course = position_x /
+			double distance_to_course = sensors_data.position_x /
 				sin((90.0 - sensors_data.heading) * M_PI / 180.0);
 			if (sensors_data.distance > fabs(distance_to_course))
 			{
@@ -189,7 +181,7 @@ void pathfinder_a2_action(void)
 			}
 			else
 			{
-				if (position_x < 0)
+				if (sensors_data.position_x < 0)
 					rotate_dir = -1.0;
 				else
 					rotate_dir = 1.0;
@@ -200,7 +192,6 @@ void pathfinder_a2_action(void)
 				prev_headings[1] = 0.0;
 				prev_index = 0;
 				samples_number = 1;
-				prev_odo = 0;
 				steering.mode = STEERING_ROTATE;
 				steering.desired_heading = rotate_dir * MAX_HEADING;
 				steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
@@ -211,6 +202,9 @@ void pathfinder_a2_action(void)
 	case PATHFINDER_A2_FINISH:
 		if (steering.mode == STEERING_STOP)
 		{
+			stats_end();
+			syslog(LOG_INFO, "Pathfinder A2: elapsed %.2f s, covered %.2f cm.",
+				stats.elapsed_time, stats.distance_covered);
 			pathfinder_a2_mode = PATHFINDER_A2_NONE;
 			mode_switch(MODE_SUPERVISOR);
 			if (ipc_raspberry_daemon_attach() < 0)

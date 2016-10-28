@@ -6,6 +6,7 @@
 #include "modes.h"
 #include "steering.h"
 #include "brake.h"
+#include "stats.h"
 #include <math.h>
 
 typedef enum {
@@ -34,11 +35,6 @@ static int distances[MAX_SAMPLES];
 static double weights[MAX_SAMPLES];
 
 static int initial_obstacle_distance = 0;
-static double prev_dist = 0.0;
-static double position_x = 0.0;
-static double position_y = 0.0;
-static double heading_sin = 0.0;
-static double heading_cos = 1.0;
 
 static inline void pathfinder_a1_collect_distance(void)
 {
@@ -91,10 +87,10 @@ static inline void pathfinder_a1_calculate_weights(void)
 		distances[MAX_SAMPLES - 2] * 2 + distances[MAX_SAMPLES - 1] * 3) / 6;
 
 	/* Prefer headings towards planned route */
-	if (fabs(position_x) > 1.0)
+	if (fabs(sensors_data.position_x) > 1.0)
 	{
 		double multiplier = -1.0;
-		if (position_x < 0.0)
+		if (sensors_data.position_x < 0.0)
 			multiplier = 1.0;
 
 		for (int i = 0; i < MAX_SAMPLES; ++i)
@@ -111,15 +107,12 @@ void pathfinder_a1_action(void)
 	switch (pathfinder_a1_mode)
 	{
 	case PATHFINDER_A1_NONE:
-		sensors_data.heading = 0;
+		stats_start();
+		sensors_data_reset_coordinates();
 		sensors_data_reset_odo();
 		initial_obstacle_distance = sensors_data.distance;
 		memset((void*) distances, 0, sizeof(distances));
 		memset((void*) weights, 0, sizeof(weights));
-		position_x = 0.0;
-		position_y = 0.0;
-		heading_sin = 0.0;
-		heading_cos = 1.0;
 		steering.mode = STEERING_ROTATE;
 		steering.desired_heading = -MAX_HEADING;
 		steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
@@ -176,9 +169,6 @@ void pathfinder_a1_action(void)
 		if (steering.mode == STEERING_STOP)
 		{
 			sensors_data_reset_odo();
-			prev_dist = 0.0;
-			heading_sin = sin(steering.desired_heading * M_PI / 180.0);
-			heading_cos = cos(steering.desired_heading * M_PI / 180.0);
 			steering.mode = STEERING_DRIVE_FORWARD;
 			steering.desired_odo = PATHFINDER_A1_DIST;
 			steering.desired_space = 25;
@@ -186,14 +176,9 @@ void pathfinder_a1_action(void)
 		}
 		break;
 	case PATHFINDER_A1_DRIVE:
-		position_x += heading_sin * (sensors_data.odo - prev_dist);
-		position_y += heading_cos * (sensors_data.odo - prev_dist);
-		prev_dist = sensors_data.odo;
-
 		if (steering.mode == STEERING_STOP)
 		{
 			sensors_data_reset_odo();
-			prev_dist = 0.0;
 			memset((void*) distances, 0, sizeof (distances));
 			memset((void*) weights, 0, sizeof (weights));
 
@@ -204,7 +189,8 @@ void pathfinder_a1_action(void)
 			syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
 		}
 
-		if (fabs(position_x) < 2 && position_y > initial_obstacle_distance)
+		if (fabs(sensors_data.position_x) < 2 &&
+			sensors_data.position_y > initial_obstacle_distance)
 		{
 			steering.mode = STEERING_ROTATE;
 			steering.desired_heading = 0.0;
@@ -215,6 +201,9 @@ void pathfinder_a1_action(void)
 	case PATHFINDER_A1_FINISH:
 		if (steering.mode == STEERING_STOP)
 		{
+			stats_end();
+			syslog(LOG_INFO, "Pathfinder A1: elapsed %.2f s, covered %.2f cm.",
+				stats.elapsed_time, stats.distance_covered);
 			pathfinder_a1_mode = PATHFINDER_A1_NONE;
 			mode_switch(MODE_SUPERVISOR);
 			if (ipc_raspberry_daemon_attach() < 0)

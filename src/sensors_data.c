@@ -160,10 +160,13 @@ void sensors_data_filter(void)
 		heading_sin = sin(sensors_data.heading * M_PI / 180.0);
 		heading_cos = cos(sensors_data.heading * M_PI / 180.0);
 	}
-	sensors_data.position_x += heading_sin *
-		(sensors_data.global_odo - prev_global_odo);
-	sensors_data.position_y += heading_cos *
-		(sensors_data.global_odo - prev_global_odo);
+	if (motors->left * motors->right >= 0)
+	{
+		sensors_data.position_x += heading_sin *
+			(sensors_data.global_odo - prev_global_odo);
+		sensors_data.position_y += heading_cos *
+			(sensors_data.global_odo - prev_global_odo);
+	}
 }
 
 void sensors_data_reset_odo(void)
