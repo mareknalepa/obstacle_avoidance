@@ -174,14 +174,9 @@ void pathfinder_a1_action(void)
 				sin((90.0 - sensors_data.heading) * M_PI / 180.0);
 			if (sensors_data.position_y > initial_obstacle_distance &&
 				sensors_data.distance > fabs(distance_to_course))
-			{
 				steering.desired_odo = fabs(distance_to_course * 2);
-				syslog(LOG_DEBUG, "course clearance");
-			}
 			else
-			{
 				steering.desired_odo = PATHFINDER_A1_DIST;
-			}
 			steering.desired_space = 25;
 			pathfinder_a1_mode = PATHFINDER_A1_DRIVE;
 		}
