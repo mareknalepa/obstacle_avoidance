@@ -10,13 +10,14 @@ steering_t steering = { 0 };
 #define DRIVE_MAX_OUT			100.0
 #define DRIVE_P					6.0
 
+static double raw_steering = 0.0;
 static double distance_err = 0.0;
 static double drive_steering = 0.0;
 
-#define HEADING_RATE_P			10.0
-#define HEADING_RATE_I			5.0
-#define HEADING_RATE_D			1.0
-#define HEADING_RATE_SUM_MAX	50.0
+#define HEADING_RATE_P			4.0
+#define HEADING_RATE_I			8.0
+#define HEADING_RATE_D			5.0
+#define HEADING_RATE_SUM_MAX	100.0
 #define HEADING_RATE_MAX_OUT	100.0
 
 static double heading_rate_setpoint = 0.0;
@@ -25,10 +26,10 @@ static double heading_rate_prev = 0.0;
 static double heading_rate_err_sum = 0.0;
 static double heading_rate_steering = 0.0;
 
-#define HEADING_P				1.2
-#define HEADING_I				0.1
-#define HEADING_D				0.05
-#define HEADING_SUM_MAX			100.0
+#define HEADING_P				0.3
+#define HEADING_I				0.001
+#define HEADING_D				0.004
+#define HEADING_SUM_MAX			200.0
 #define HEADING_MAX_OUT_DEFAULT	5.0
 
 static double heading_err = 0.0;
@@ -45,7 +46,6 @@ static double steering_trunc(double value, double min, double max)
 		return value;
 }
 
-double raw_steering = 0.0;
 
 void steering_cycle(void)
 {
@@ -100,7 +100,7 @@ void steering_cycle(void)
 		heading_rate_setpoint = steering_trunc(heading_rate_setpoint,
 			-steering.max_heading_rate, steering.max_heading_rate);
 
-		/* Inside PID controller (controls heading) */
+		/* Inside PID controller (controls actual rotating) */
 		heading_rate_err = heading_rate_setpoint - sensors_data.heading_rate;
 		heading_rate_steering = HEADING_RATE_P * heading_rate_err;
 

@@ -25,9 +25,9 @@ pathfinder_a1_mode_t pathfinder_a1_mode = PATHFINDER_A1_NONE;
 #define MAX_HEADING 80
 #define MAX_HEADING_RATE_SEARCH 3.5
 #define MAX_HEADING_RATE_NORMAL 8.0
-#define PATHFINDER_A1_DIST 50
-#define HEADING_PREFER_BASE 1.25
-#define HEADING_PREFER_FACTOR 0.25
+#define PATHFINDER_A1_DIST 60
+#define HEADING_PREFER_BASE 1.2
+#define HEADING_PREFER_FACTOR 0.2
 
 #define MAX_SAMPLES 48
 static double angles[MAX_SAMPLES];
@@ -62,8 +62,8 @@ static inline void pathfinder_a1_filter_distances(void)
 			else
 				distances[i] = (distances[i - 1] + distances[i + 1]) / 2;
 		}
-		else if (distances[i] > 200)
-			distances[i] = 200;
+		else if (distances[i] > 150)
+			distances[i] = 150;
 
 		if (angles[i] == 0.0)
 			angles[i] = -MAX_HEADING + i * angles_step;
