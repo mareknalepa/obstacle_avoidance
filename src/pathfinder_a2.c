@@ -176,7 +176,7 @@ void pathfinder_a2_action(void)
 			{
 				steering.mode = STEERING_DRIVE_FORWARD;
 				sensors_data_reset_odo();
-				steering.desired_odo = distance_to_course * 2;
+				steering.desired_odo = fabs(distance_to_course) * 2;
 				pathfinder_a2_mode = PATHFINDER_A2_DRIVE_FORWARD;
 			}
 			else
