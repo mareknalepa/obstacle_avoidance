@@ -1,10 +1,9 @@
 #include "scheduler.h"
 
 #include "common.h"
+#include "constants.h"
 #include <sched.h>
 #include <time.h>
-
-#define SCHEDULER_CYCLE_INTERVAL 100000000;
 
 static struct timespec scheduler_timer;
 
@@ -17,7 +16,7 @@ void scheduler_init(int priority)
 		syslog(LOG_ERR, "Cannot set priority!");
 		exit(1);
 	}
-	
+
 	clock_gettime(CLOCK_MONOTONIC, &scheduler_timer);
 }
 

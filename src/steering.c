@@ -1,36 +1,22 @@
 #include "steering.h"
 
 #include "common.h"
+#include "constants.h"
 #include "motors.h"
 #include "sensors_data.h"
 #include <math.h>
 
 steering_t steering = { 0 };
 
-#define DRIVE_MAX_OUT			100.0
-#define DRIVE_P					6.0
-
 static double raw_steering = 0.0;
 static double distance_err = 0.0;
 static double drive_steering = 0.0;
-
-#define HEADING_RATE_P			4.0
-#define HEADING_RATE_I			8.0
-#define HEADING_RATE_D			5.0
-#define HEADING_RATE_SUM_MAX	100.0
-#define HEADING_RATE_MAX_OUT	100.0
 
 static double heading_rate_setpoint = 0.0;
 static double heading_rate_err = 0.0;
 static double heading_rate_prev = 0.0;
 static double heading_rate_err_sum = 0.0;
 static double heading_rate_steering = 0.0;
-
-#define HEADING_P				0.3
-#define HEADING_I				0.001
-#define HEADING_D				0.004
-#define HEADING_SUM_MAX			200.0
-#define HEADING_MAX_OUT_DEFAULT	5.0
 
 static double heading_err = 0.0;
 static double heading_prev = 0.0;
@@ -46,7 +32,6 @@ static double steering_trunc(double value, double min, double max)
 		return value;
 }
 
-
 void steering_cycle(void)
 {
 	switch (steering.mode)
@@ -54,15 +39,13 @@ void steering_cycle(void)
 	case STEERING_STOP:
 		steering.max_heading_rate = HEADING_MAX_OUT_DEFAULT;
 		break;
-	case STEERING_BRAKE:
-		break;
 	case STEERING_DRIVE_FORWARD:
 		distance_err = steering.desired_odo - sensors_data.odo;
-		if (distance_err > sensors_data.distance - steering.desired_space)
+		if (distance_err > sensors_data.distance - LONGITUDINAL_CLEARANCE)
 		{
-			if (sensors_data.distance > steering.desired_space)
+			if (sensors_data.distance > LONGITUDINAL_CLEARANCE)
 				raw_steering = (sensors_data.distance -
-					steering.desired_space) * DRIVE_P;
+					LONGITUDINAL_CLEARANCE) * DRIVE_P;
 			else
 				raw_steering = 0.0;
 		}

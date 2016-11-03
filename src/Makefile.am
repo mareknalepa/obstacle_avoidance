@@ -21,6 +21,7 @@ obstacle_avoidance_SOURCES = \
 noinst_HEADERS = \
 	brake.h \
 	common.h \
+	constants.h \
 	daemon.h \
 	ipc.h \
 	modes.h \

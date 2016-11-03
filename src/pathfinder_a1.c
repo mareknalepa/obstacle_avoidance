@@ -1,6 +1,7 @@
 #include "pathfinder_a1.h"
 
 #include "common.h"
+#include "constants.h"
 #include "sensors_data.h"
 #include "ipc.h"
 #include "modes.h"
@@ -10,60 +11,52 @@
 #include <math.h>
 
 typedef enum {
-    PATHFINDER_A1_NONE,
-    PATHFINDER_A1_LOOKUP_LEFT_ROTATE,
-    PATHFINDER_A1_LOOKUP_RIGHT_ROTATE,
-    PATHFINDER_A1_LOOKUP_RETURN,
-    PATHFINDER_A1_PROCESS_SAMPLES,
-    PATHFINDER_A1_SET_HEADING,
-    PATHFINDER_A1_DRIVE,
-    PATHFINDER_A1_FINISH,
+	PATHFINDER_A1_NONE,
+	PATHFINDER_A1_TURN_LEFT,
+	PATHFINDER_A1_LOOKUP,
+	PATHFINDER_A1_PROCESS_SAMPLES,
+	PATHFINDER_A1_SET_HEADING,
+	PATHFINDER_A1_DRIVE_FORWARD,
+	PATHFINDER_A1_FINISH,
 } pathfinder_a1_mode_t;
 
 pathfinder_a1_mode_t pathfinder_a1_mode = PATHFINDER_A1_NONE;
 
-#define MAX_HEADING 80
-#define MAX_HEADING_RATE_SEARCH 3.5
-#define MAX_HEADING_RATE_NORMAL 8.0
-#define PATHFINDER_A1_DIST 60
-#define HEADING_PREFER_BASE 1.2
-#define HEADING_PREFER_FACTOR 0.2
-
-#define MAX_SAMPLES 48
-static double angles[MAX_SAMPLES];
-static int distances[MAX_SAMPLES];
-static double weights[MAX_SAMPLES];
-
+static double angles[PATHFINDER_A1_SAMPLES];
+static int distances[PATHFINDER_A1_SAMPLES];
+static double weights[PATHFINDER_A1_SAMPLES];
 static int initial_obstacle_distance = 0;
 
 static inline void pathfinder_a1_collect_distance(void)
 {
-	int index = (sensors_data.heading + 60) * MAX_SAMPLES / (MAX_HEADING * 2);
+	int index = (sensors_data.heading + 60) * PATHFINDER_A1_SAMPLES /
+		(MAX_HEADING * 2);
 	if (index < 0)
 		index = 0;
-	else if (index >= MAX_SAMPLES)
-		index = MAX_SAMPLES - 1;
+	else if (index >= PATHFINDER_A1_SAMPLES)
+		index = PATHFINDER_A1_SAMPLES - 1;
 	angles[index] = sensors_data.heading;
 	distances[index] = sensors_data.distance;
 }
 
 static inline void pathfinder_a1_filter_distances(void)
 {
-	double angles_step = (MAX_HEADING * 2.0) / (MAX_SAMPLES - 1);
+	double angles_step = (MAX_HEADING * 2.0) / (PATHFINDER_A1_SAMPLES - 1);
 
-	for (int i = 0; i < MAX_SAMPLES; ++i)
+	for (int i = 0; i < PATHFINDER_A1_SAMPLES; ++i)
 	{
 		if (distances[i] == 0)
 		{
 			if (i == 0)
 				distances[0] = distances[1];
-			else if (i == (MAX_SAMPLES - 1))
-				distances[MAX_SAMPLES - 1] = distances[MAX_SAMPLES - 2];
+			else if (i == (PATHFINDER_A1_SAMPLES - 1))
+				distances[PATHFINDER_A1_SAMPLES - 1] =
+					distances[PATHFINDER_A1_SAMPLES - 2];
 			else
 				distances[i] = (distances[i - 1] + distances[i + 1]) / 2;
 		}
-		else if (distances[i] > 150)
-			distances[i] = 150;
+		else if (distances[i] > PATHFINDER_A1_MAX_DISTANCE)
+			distances[i] = PATHFINDER_A1_MAX_DISTANCE;
 
 		if (angles[i] == 0.0)
 			angles[i] = -MAX_HEADING + i * angles_step;
@@ -75,16 +68,18 @@ static inline void pathfinder_a1_calculate_weights(void)
 	weights[0] = (distances[0] * 3 + distances[1] * 2 + distances[2]) / 6;
 	weights[1] = (distances[0] * 2 + distances[1] * 3 + distances[2] * 2 +
 		distances[3]) / 8;
-	for (int i = 2; i < (MAX_SAMPLES - 2); ++i)
+	for (int i = 2; i < (PATHFINDER_A1_SAMPLES - 2); ++i)
 	{
 		weights[i] = (distances[i - 2] + distances[i - 1] * 2 +
 			distances[i] * 3 + distances[i + 1] * 2 + distances[i + 2]) / 9;
 	}
-	weights[MAX_SAMPLES - 2] = (distances[MAX_SAMPLES - 4] +
-		distances[MAX_SAMPLES - 3] * 2 + distances[MAX_SAMPLES - 2] * 3 +
-		distances[MAX_SAMPLES - 1] * 2) / 8;
-	weights[MAX_SAMPLES - 1] = (distances[MAX_SAMPLES - 3] +
-		distances[MAX_SAMPLES - 2] * 2 + distances[MAX_SAMPLES - 1] * 3) / 6;
+	weights[PATHFINDER_A1_SAMPLES - 2] = (distances[PATHFINDER_A1_SAMPLES - 4] +
+		distances[PATHFINDER_A1_SAMPLES - 3] * 2 +
+		distances[PATHFINDER_A1_SAMPLES - 2] * 3 +
+		distances[PATHFINDER_A1_SAMPLES - 1] * 2) / 8;
+	weights[PATHFINDER_A1_SAMPLES - 1] = (distances[PATHFINDER_A1_SAMPLES - 3] +
+		distances[PATHFINDER_A1_SAMPLES - 2] * 2 +
+		distances[PATHFINDER_A1_SAMPLES - 1] * 3) / 6;
 
 	/* Prefer headings towards planned route */
 	if (fabs(sensors_data.position_x) > 1.0)
@@ -93,13 +88,27 @@ static inline void pathfinder_a1_calculate_weights(void)
 		if (sensors_data.position_x < 0.0)
 			multiplier = 1.0;
 
-		for (int i = 0; i < MAX_SAMPLES; ++i)
+		for (int i = 0; i < PATHFINDER_A1_SAMPLES; ++i)
 		{
-			double ratio = HEADING_PREFER_BASE +
-				(angles[i] / MAX_HEADING * multiplier) * HEADING_PREFER_FACTOR;
+			double angle = angles[i] * multiplier;
+			double ratio;
+				ratio = (PATHFINDER_A1_PREFER_A * angle +
+					PATHFINDER_A1_PREFER_B) * angle + PATHFINDER_A1_PREFER_C;
 			weights[i] *= ratio;
 		}
 	}
+}
+
+static inline double pathfinder_a1_best_heading(void)
+{
+	int best_index = 0;
+	for (int i = 0; i < PATHFINDER_A1_SAMPLES; ++i)
+	{
+		if (weights[i] > weights[best_index])
+			best_index = i;
+	}
+	
+	return angles[best_index];
 }
 
 void pathfinder_a1_action(void)
@@ -109,39 +118,24 @@ void pathfinder_a1_action(void)
 	case PATHFINDER_A1_NONE:
 		stats_start();
 		sensors_data_reset_coordinates();
-		sensors_data_reset_odo();
 		initial_obstacle_distance = sensors_data.distance;
-		memset((void*) distances, 0, sizeof(distances));
-		memset((void*) weights, 0, sizeof(weights));
-		steering.mode = STEERING_ROTATE;
-		steering.desired_heading = -MAX_HEADING;
-		steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
-		pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
-		syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
-		break;
-	case PATHFINDER_A1_LOOKUP_LEFT_ROTATE:
-		pathfinder_a1_collect_distance();
 
+		steering_rotate(-MAX_HEADING, HEADING_RATE_TURN);
+		pathfinder_a1_mode = PATHFINDER_A1_TURN_LEFT;
+		break;
+	case PATHFINDER_A1_TURN_LEFT:
 		if (steering.mode == STEERING_STOP)
 		{
-			steering.mode = STEERING_ROTATE;
-			steering.desired_heading = MAX_HEADING;
-			steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
-			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RIGHT_ROTATE;
-		}
-		break;
-	case PATHFINDER_A1_LOOKUP_RIGHT_ROTATE:
-		pathfinder_a1_collect_distance();
+			memset((void*) distances, 0, sizeof(distances));
+			memset((void*) weights, 0, sizeof(weights));
+			syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
+			pathfinder_a1_collect_distance();
 
-		if (steering.mode == STEERING_STOP)
-		{
-			steering.mode = STEERING_ROTATE;
-			steering.desired_heading = 0.0;
-			steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
-			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_RETURN;
+			steering_rotate(MAX_HEADING, HEADING_RATE_LOOKUP);
+			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP;
 		}
 		break;
-	case PATHFINDER_A1_LOOKUP_RETURN:
+	case PATHFINDER_A1_LOOKUP:
 		pathfinder_a1_collect_distance();
 
 		if (steering.mode == STEERING_STOP)
@@ -151,16 +145,8 @@ void pathfinder_a1_action(void)
 		pathfinder_a1_filter_distances();
 		pathfinder_a1_calculate_weights();
 
-		int best_index = 0;
-		for (int i = 0; i < MAX_SAMPLES; ++i)
-		{
-			if (weights[i] > weights[best_index])
-				best_index = i;
-		}
-		steering.mode = STEERING_ROTATE;
-		steering.desired_heading = angles[best_index];
-		steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
-
+		steering_rotate(pathfinder_a1_best_heading(), HEADING_RATE_TURN);
+		++stats.heading_changes;
 		syslog(LOG_INFO, "Pathfinder A1: choosing heading %.2f",
 			 steering.desired_heading);
 		pathfinder_a1_mode = PATHFINDER_A1_SET_HEADING;
@@ -168,39 +154,28 @@ void pathfinder_a1_action(void)
 	case PATHFINDER_A1_SET_HEADING:
 		if (steering.mode == STEERING_STOP)
 		{
-			sensors_data_reset_odo();
-			steering.mode = STEERING_DRIVE_FORWARD;
-			double distance_to_course = sensors_data.position_x /
-				sin((90.0 - sensors_data.heading) * M_PI / 180.0);
+			double distance_to_course = fabs(sensors_data.position_x /
+				sin((90.0 - sensors_data.heading) * M_PI / 180.0));
 			if (sensors_data.position_y > initial_obstacle_distance &&
-				sensors_data.distance > fabs(distance_to_course))
-				steering.desired_odo = fabs(distance_to_course * 2);
+				sensors_data.distance > distance_to_course)
+				steering_drive(distance_to_course + VEHICLE_LENGTH);
 			else
-				steering.desired_odo = PATHFINDER_A1_DIST;
-			steering.desired_space = 25;
-			pathfinder_a1_mode = PATHFINDER_A1_DRIVE;
+				steering_drive(PATHFINDER_A1_DRIVING_LENGTH);
+			++stats.forward_rides;
+			pathfinder_a1_mode = PATHFINDER_A1_DRIVE_FORWARD;
 		}
 		break;
-	case PATHFINDER_A1_DRIVE:
+	case PATHFINDER_A1_DRIVE_FORWARD:
 		if (steering.mode == STEERING_STOP)
 		{
-			sensors_data_reset_odo();
-			memset((void*) distances, 0, sizeof (distances));
-			memset((void*) weights, 0, sizeof (weights));
-
-			steering.mode = STEERING_ROTATE;
-			steering.desired_heading = -MAX_HEADING;
-			steering.max_heading_rate = MAX_HEADING_RATE_SEARCH;
-			pathfinder_a1_mode = PATHFINDER_A1_LOOKUP_LEFT_ROTATE;
-			syslog(LOG_INFO, "Pathfinder A1: sampling environment...");
+			steering_rotate(-MAX_HEADING, HEADING_RATE_TURN);
+			pathfinder_a1_mode = PATHFINDER_A1_TURN_LEFT;
 		}
 
 		if (fabs(sensors_data.position_x) < 2 &&
 			sensors_data.position_y > initial_obstacle_distance)
 		{
-			steering.mode = STEERING_ROTATE;
-			steering.desired_heading = 0.0;
-			steering.max_heading_rate = MAX_HEADING_RATE_NORMAL;
+			steering_rotate(0.0, HEADING_RATE_TURN);
 			pathfinder_a1_mode = PATHFINDER_A1_FINISH;
 		}
 		break;
@@ -208,8 +183,6 @@ void pathfinder_a1_action(void)
 		if (steering.mode == STEERING_STOP)
 		{
 			stats_end();
-			syslog(LOG_INFO, "Pathfinder A1: elapsed %.2f s, covered %.2f cm.",
-				stats.elapsed_time, stats.distance_covered);
 			pathfinder_a1_mode = PATHFINDER_A1_NONE;
 			mode_switch(MODE_SUPERVISOR);
 			if (ipc_raspberry_daemon_attach() < 0)

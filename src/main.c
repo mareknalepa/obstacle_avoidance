@@ -1,4 +1,5 @@
 #include "common.h"
+#include "constants.h"
 #include "daemon.h"
 #include "scheduler.h"
 #include "sensors_data.h"
@@ -50,7 +51,7 @@ int main(int argc, char** argv)
 	}
 
 	/* Set process priority */
-	scheduler_init(89);
+	scheduler_init(SCHEDULER_PRIORITY);
 
 	/* Init daemon */
 	daemon_init("obstacle_avoidance", debug, "/var/run/obstacle_avoidance.pid");

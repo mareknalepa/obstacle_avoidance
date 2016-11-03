@@ -28,14 +28,14 @@ int motors_init(void)
 		syslog(LOG_ERR, "Cannot initialize motors subsystem.");
 		return -1;
 	}
-	
+
 	if (ioctl(motors_i2c_fd, I2C_SLAVE, motors_i2c_address) < 0)
 	{
 		syslog(LOG_ERR, "Cannot initialize motors subsystem.");
 		motors_destroy();
 		return -1;
 	}
-	
+
 	if (shared_memory_map_rdwr(motors_file, &motors_fd, (void*) &motors,
 							 sizeof(motors_t)) < 0)
 	{
@@ -43,7 +43,7 @@ int motors_init(void)
 		motors_destroy();
 		return -1;
 	}
-	
+
 	return 0;
 }
 
@@ -85,7 +85,7 @@ void motors_write(int left, int right)
 								 motors_forward);
 		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_pwm, byte);
 	}
-	
+
 	motors->left = left;
 	motors->right = right;
 }

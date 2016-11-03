@@ -1,6 +1,7 @@
 #include "sensors_data.h"
 
 #include "common.h"
+#include "constants.h"
 #include "shared_memory.h"
 #include "motors.h"
 #include <math.h>
@@ -52,7 +53,6 @@ static gyro_mag_t* gyro_mag;
 static int encoder_fd;
 static encoder_t* encoder;
 
-#define ODO_FILTER_SMOOTHNESS 0.3
 static double encoder_left_prev;
 static double encoder_right_prev;
 static double heading_sin;

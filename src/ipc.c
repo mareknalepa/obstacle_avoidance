@@ -25,10 +25,10 @@ int ipc_init(void)
 		pclose(fp);
 		return -1;
 	}
-	
+
 	syslog(LOG_INFO, "Raspberry daemon PID: %d", ipc_raspberry_daemon_pid);
 	pclose(fp);
-	
+
 	return 0;
 }
 
@@ -43,7 +43,7 @@ int ipc_raspberry_daemon_detach(void)
 			 ipc_raspberry_daemon_pid, strerror(errno));
 		return -1;
 	}
-	
+
 	return 0;
 }
 
@@ -58,6 +58,6 @@ int ipc_raspberry_daemon_attach(void)
 			 ipc_raspberry_daemon_pid, strerror(errno));
 		return -1;
 	}
-	
+
 	return 0;
 }
