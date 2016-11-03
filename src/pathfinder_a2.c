@@ -127,7 +127,7 @@ void pathfinder_a2_action(void)
 	case PATHFINDER_A2_AVOID_EDGE:
 		if (steering.mode == STEERING_STOP)
 		{
-			steering_drive(prev_distances[prev_index] + VEHICLE_LENGTH);
+			steering_drive(prev_distances[prev_index] + VEHICLE_LENGTH * 2.0);
 			++stats.heading_changes;
 			++stats.forward_rides;
 			pathfinder_a2_mode = PATHFINDER_A2_DRIVE_FORWARD;
@@ -169,7 +169,7 @@ void pathfinder_a2_action(void)
 			syslog(LOG_INFO, "Pathfinder A2: Rotated to center.");
 
 			double distance_to_course = fabs(sensors_data.position_x /
-				sin((90.0 - sensors_data.heading) * M_PI / 180.0));
+				cos((90.0 - sensors_data.heading) * M_PI / 180.0));
 			if (sensors_data.distance > distance_to_course)
 			{
 				steering_drive(distance_to_course + VEHICLE_LENGTH);

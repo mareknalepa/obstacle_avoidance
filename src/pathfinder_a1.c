@@ -40,7 +40,7 @@ static int initial_obstacle_distance = 0;
 static inline void pathfinder_a1_collect_distance(void)
 {
 	/* Calculate index based on heading */
-	int index = (sensors_data.heading + 60) * PATHFINDER_A1_SAMPLES /
+	int index = (sensors_data.heading + MAX_HEADING) * PATHFINDER_A1_SAMPLES /
 		(MAX_HEADING * 2);
 	if (index < 0)
 		index = 0;
@@ -180,10 +180,10 @@ void pathfinder_a1_action(void)
 		if (steering.mode == STEERING_STOP)
 		{
 			double distance_to_course = fabs(sensors_data.position_x /
-				sin((90.0 - sensors_data.heading) * M_PI / 180.0));
+				cos((90.0 - sensors_data.heading) * M_PI / 180.0));
 			if (sensors_data.position_y > initial_obstacle_distance &&
 				sensors_data.distance > distance_to_course)
-				steering_drive(distance_to_course + VEHICLE_LENGTH);
+				steering_drive(distance_to_course + VEHICLE_LENGTH * 2.0);
 			else
 				steering_drive(PATHFINDER_A1_DRIVING_LENGTH);
 			++stats.forward_rides;
