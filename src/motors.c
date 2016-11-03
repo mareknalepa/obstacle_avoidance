@@ -1,3 +1,10 @@
+/*
+ * motors.c
+ *
+ * Author: Marek Nalepa, ported from C++ to C, original code by Wojciech Michna
+ * Purpose: Control vehicle's motors.
+ */
+
 #include "motors.h"
 
 #include "common.h"
@@ -8,6 +15,7 @@ static const char* motors_i2c_path = "/dev/i2c-1";
 static const int motors_i2c_address = 0x47;
 static int motors_i2c_fd = -1;
 
+/* Romeo V2 registers' addresses */
 static const uint8_t motors_left_pwm = 4;
 static const uint8_t motors_right_pwm = 5;
 static const uint8_t motors_left_dir = 6;
@@ -18,10 +26,13 @@ static const uint8_t motors_backward = 0;
 static const char* motors_file = "/home/pi/mmap_buffors/motors_buffor";
 static int motors_fd = -1;
 
+/* Current motors state */
 motors_t* motors = 0;
 
+/* Initialize motors subsystem */
 int motors_init(void)
 {
+	/* Initialize I2C bus */
 	motors_i2c_fd = open(motors_i2c_path, O_RDWR | O_CLOEXEC);
 	if (motors_i2c_fd < 0)
 	{
@@ -36,6 +47,7 @@ int motors_init(void)
 		return -1;
 	}
 
+	/* Perform mapping for exchanging values */
 	if (shared_memory_map_rdwr(motors_file, &motors_fd, (void*) &motors,
 							 sizeof(motors_t)) < 0)
 	{
@@ -47,6 +59,7 @@ int motors_init(void)
 	return 0;
 }
 
+/* Shutdown motors subsystem */
 void motors_destroy(void)
 {
 	close(motors_i2c_fd);
@@ -54,8 +67,10 @@ void motors_destroy(void)
 	shared_memory_unmap(&motors_fd, (void**) &motors, sizeof(motors_t));
 }
 
+/* Set motors' control values */
 void motors_write(int left, int right)
 {
+	/* Split value [-100;100] into absolute value and sign, write to register */
 	uint8_t byte;
 	if (left < 0)
 	{
@@ -86,6 +101,7 @@ void motors_write(int left, int right)
 		i2c_smbus_write_byte_data(motors_i2c_fd, motors_right_pwm, byte);
 	}
 
+	/* Inform other applications */
 	motors->left = left;
 	motors->right = right;
 }

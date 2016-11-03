@@ -1,3 +1,10 @@
+/*
+ * common.h
+ *
+ * Author: Marek Nalepa
+ * Purpose: Group frequently used standard headers into one included file.
+ */
+
 #ifndef COMMON_H_
 #define COMMON_H_
 

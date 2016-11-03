@@ -1,3 +1,10 @@
+/*
+ * main.c
+ *
+ * Author: Marek Nalepa
+ * Purpose: Main application source file with entry point.
+ */
+
 #include "common.h"
 #include "constants.h"
 #include "daemon.h"
@@ -12,8 +19,10 @@
 #include "pathfinder_a2.h"
 #include "steering.h"
 
+/* Handler for external signals (e.g. SIGTERM) to shutdown cleanly */
 static void signal_handler(int signum);
 
+/* Application entry point */
 int main(int argc, char** argv)
 {
 	int option = 0;
@@ -53,7 +62,7 @@ int main(int argc, char** argv)
 	/* Set process priority */
 	scheduler_init(SCHEDULER_PRIORITY);
 
-	/* Init daemon */
+	/* Init daemon, daemon mode only if user didn't choose debug mode */
 	daemon_init("obstacle_avoidance", debug, "/var/run/obstacle_avoidance.pid");
 
 	/* Register signal handlers */
@@ -76,6 +85,7 @@ int main(int argc, char** argv)
 	mode_register_handler(MODE_SUPERVISOR, &supervisor_action);
 	mode_register_handler(MODE_BRAKE, &brake_action);
 
+	/* Register pathfinder algorithm basen on user's choice */
 	switch (algorithm)
 	{
 	case 1:
@@ -89,21 +99,31 @@ int main(int argc, char** argv)
 		break;
 	}
 
-	syslog(LOG_INFO, "Selected obstacle avoidance algorithm: %d.", algorithm);
+	syslog(LOG_INFO, "Selected obstacle avoidance algorithm: A%d.", algorithm);
 
 	/* Begin infinite loop */
 	while (1)
 	{
+		/* Start cycle time measure */
 		scheduler_begin_cycle();
+
+		/* Obtain fresh sensors data, filter it and make calculations */
 		sensors_data_filter();
+
+		/* Perform logic actions on data */
 		mode_action();
+
+		/* Update motors with new steering data */
 		steering_cycle();
+
+		/* Stop cycle time measure, wait until full cycle */
 		scheduler_end_cycle();
 	}
 
 	return 0;
 }
 
+/* Handler for external signals (e.g. SIGTERM) to shutdown cleanly */
 void signal_handler(int signum)
 {
 	switch (signum)

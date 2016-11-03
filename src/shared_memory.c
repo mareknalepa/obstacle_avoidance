@@ -1,8 +1,16 @@
+/*
+ * shared_memory.c
+ *
+ * Author: Marek Nalepa, ported from C++ to C, original code by Wojciech Michna
+ * Purpose: Provide functions to handle files mapping as memory regions.
+ */
+
 #include "shared_memory.h"
 
 #include "common.h"
 #include <sys/mman.h>
 
+/* Create read-only mapping */
 int shared_memory_map_rdonly(const char* file, int* fd, void** ptr, int size)
 {
 	*fd = open(file, O_RDONLY | O_CLOEXEC);
@@ -20,6 +28,7 @@ int shared_memory_map_rdonly(const char* file, int* fd, void** ptr, int size)
 	return 0;
 }
 
+/* Create read/write mapping */
 int shared_memory_map_rdwr(const char* file, int* fd, void** ptr, int size)
 {
 	*fd = open(file, O_RDWR | O_CREAT | O_CLOEXEC, (mode_t) 0777);
@@ -37,6 +46,7 @@ int shared_memory_map_rdwr(const char* file, int* fd, void** ptr, int size)
 	return 0;
 }
 
+/* Remove mapping */
 void shared_memory_unmap(int* fd, void** ptr, int size)
 {
 	if (*fd < 0)

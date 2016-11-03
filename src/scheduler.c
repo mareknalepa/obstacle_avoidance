@@ -1,3 +1,10 @@
+/*
+ * scheduler.c
+ *
+ * Author: Marek Nalepa
+ * Purpose: Setup application as real-time task and handle cycles.
+ */
+
 #include "scheduler.h"
 
 #include "common.h"
@@ -7,6 +14,7 @@
 
 static struct timespec scheduler_timer;
 
+/* Setup scheduler */
 void scheduler_init(int priority)
 {
 	struct sched_param sch_param;
@@ -20,6 +28,7 @@ void scheduler_init(int priority)
 	clock_gettime(CLOCK_MONOTONIC, &scheduler_timer);
 }
 
+/* Start cycle */
 void scheduler_begin_cycle(void)
 {
 	scheduler_timer.tv_nsec += SCHEDULER_CYCLE_INTERVAL;
@@ -30,6 +39,7 @@ void scheduler_begin_cycle(void)
 	}
 }
 
+/* Stop cycle, wait before next cycle */
 void scheduler_end_cycle(void)
 {
 	clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &scheduler_timer, 0);

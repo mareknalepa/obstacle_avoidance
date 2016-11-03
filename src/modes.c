@@ -1,3 +1,10 @@
+/*
+ * modes.c
+ *
+ * Author: Marek Nalepa
+ * Purpose: Handle application mode state machine.
+ */
+
 #include "modes.h"
 
 #include "common.h"
@@ -5,6 +12,7 @@
 application_mode_t mode = MODE_SUPERVISOR;
 application_mode_handler_t mode_handlers[3] = { 0 };
 
+/* Switch to another mode */
 void mode_switch(application_mode_t new_mode)
 {
 	syslog(LOG_INFO, "Switching mode from '%s' to '%s'...",
@@ -12,6 +20,7 @@ void mode_switch(application_mode_t new_mode)
 	mode = new_mode;
 }
 
+/* Get human-readable mode name */
 const char* mode_to_str(application_mode_t mode)
 {
 	switch (mode)
@@ -31,6 +40,7 @@ const char* mode_to_str(application_mode_t mode)
 	}
 }
 
+/* Register logic action handler for specific mode */
 void mode_register_handler(application_mode_t mode,
 		application_mode_handler_t handler)
 {
@@ -40,6 +50,7 @@ void mode_register_handler(application_mode_t mode,
 	mode_handlers[mode] = handler;
 }
 
+/* Perform current mode's logic action */
 void mode_action(void)
 {
 	mode_handlers[mode]();

@@ -1,7 +1,15 @@
+/*
+ * daemon.c
+ *
+ * Author: Marek Nalepa
+ * Purpose: Run application as system daemon.
+ */
+
 #include "daemon.h"
 
 #include "common.h"
 
+/* Initialize daemon, open system log detach from console */
 void daemon_init(const char* name, int debug, const char* pidfile)
 {
 	pid_t pid, sid;
@@ -138,6 +146,7 @@ void daemon_init(const char* name, int debug, const char* pidfile)
 	syslog(LOG_INFO, "Created PID file '%s'.", pidfile);
 }
 
+/* Shutdown daemon */
 void daemon_destroy(void)
 {
 	syslog(LOG_INFO, "Daemon stopping...");

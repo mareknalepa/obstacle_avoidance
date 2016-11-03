@@ -1,3 +1,10 @@
+/*
+ * pathfinder_a2.c
+ *
+ * Author: Marek Nalepa
+ * Purpose: Implementation of A2 obstacle avoidance algorithm.
+ */
+
 #include "pathfinder_a2.h"
 
 #include "common.h"
@@ -10,6 +17,7 @@
 #include "stats.h"
 #include <math.h>
 
+/* A2 algorithm possible states */
 typedef enum {
     PATHFINDER_A2_NONE,
 	PATHFINDER_A2_SEARCH_EDGE,
@@ -21,6 +29,7 @@ typedef enum {
 
 pathfinder_a2_mode_t pathfinder_a2_mode = PATHFINDER_A2_NONE;
 
+/* Internal variables */
 static int rotate_dir = -1.0;
 static int prev_distances[2];
 static double prev_headings[2];
@@ -28,10 +37,12 @@ static int prev_index = 0;
 static int samples_number = 0;
 static int can_resume = 0;
 
+/* Logic action handler */
 void pathfinder_a2_action(void)
 {
 	switch (pathfinder_a2_mode)
 	{
+		/* Algorithm initialization */
 	case PATHFINDER_A2_NONE:
 		stats_start();
 		sensors_data_reset_coordinates();
@@ -48,6 +59,7 @@ void pathfinder_a2_action(void)
 		syslog(LOG_INFO, "Pathfinder A2: searching edge of obstacle (left)...");
 		pathfinder_a2_mode = PATHFINDER_A2_SEARCH_EDGE;
 		break;
+		/* Rotating and looking for obstacle edge */
 	case PATHFINDER_A2_SEARCH_EDGE:
 		if (rotate_dir == -1.0 && steering.mode == STEERING_STOP)
 		{
@@ -111,13 +123,17 @@ void pathfinder_a2_action(void)
 		prev_headings[prev_index] = sensors_data.heading;
 		++samples_number;
 		break;
+		/* Rotate a bit more to drive with sufficient clearance */
 	case PATHFINDER_A2_AVOID_EDGE:
 		if (steering.mode == STEERING_STOP)
 		{
 			steering_drive(prev_distances[prev_index] + VEHICLE_LENGTH);
+			++stats.heading_changes;
+			++stats.forward_rides;
 			pathfinder_a2_mode = PATHFINDER_A2_DRIVE_FORWARD;
 		}
 		break;
+		/* Drive forward next to edge */
 	case PATHFINDER_A2_DRIVE_FORWARD:
 		if (steering.mode == STEERING_STOP)
 		{
@@ -144,10 +160,12 @@ void pathfinder_a2_action(void)
 			pathfinder_a2_mode = PATHFINDER_A2_FINISH;
 		}
 		break;
+		/* Rotate towards initial vehicle's direction */
 	case PATHFINDER_A2_ROTATE_TO_CENTER:
 		if (steering.mode == STEERING_STOP)
 		{
 			can_resume = 1;
+			++stats.heading_changes;
 			syslog(LOG_INFO, "Pathfinder A2: Rotated to center.");
 
 			double distance_to_course = fabs(sensors_data.position_x /
@@ -156,6 +174,7 @@ void pathfinder_a2_action(void)
 			{
 				steering_drive(distance_to_course + VEHICLE_LENGTH);
 				pathfinder_a2_mode = PATHFINDER_A2_DRIVE_FORWARD;
+				++stats.forward_rides;
 			}
 			else
 			{
@@ -175,9 +194,11 @@ void pathfinder_a2_action(void)
 			}
 		}
 		break;
+		/* Quit obstacle avoidance, return control to main daemon */
 	case PATHFINDER_A2_FINISH:
 		if (steering.mode == STEERING_STOP)
 		{
+			++stats.heading_changes;
 			stats_end();
 			pathfinder_a2_mode = PATHFINDER_A2_NONE;
 			mode_switch(MODE_SUPERVISOR);

@@ -1,3 +1,10 @@
+/*
+ * steering.c
+ *
+ * Author: Marek Nalepa
+ * Purpose: Controls motors to achieve smooth movement of vehicle.
+ */
+
 #include "steering.h"
 
 #include "common.h"
@@ -8,6 +15,7 @@
 
 steering_t steering = { 0 };
 
+/* Internal variables */
 static double raw_steering = 0.0;
 static double distance_err = 0.0;
 static double drive_steering = 0.0;
@@ -22,6 +30,7 @@ static double heading_err = 0.0;
 static double heading_prev = 0.0;
 static double heading_err_sum = 0.0;
 
+/* Truncate supplied value to boundaries */
 static double steering_trunc(double value, double min, double max)
 {
 	if (value > max)
@@ -32,15 +41,20 @@ static double steering_trunc(double value, double min, double max)
 		return value;
 }
 
+/* Steering action in application cycle */
 void steering_cycle(void)
 {
 	switch (steering.mode)
 	{
+		/* Informs user that movement has finished */
 	case STEERING_STOP:
 		steering.max_heading_rate = HEADING_MAX_OUT_DEFAULT;
 		break;
+		/* Driving forward by a predetermined distance */
 	case STEERING_DRIVE_FORWARD:
 		distance_err = steering.desired_odo - sensors_data.odo;
+
+		/* Check obstacle clearance */
 		if (distance_err > sensors_data.distance - LONGITUDINAL_CLEARANCE)
 		{
 			if (sensors_data.distance > LONGITUDINAL_CLEARANCE)
@@ -56,6 +70,7 @@ void steering_cycle(void)
 		drive_steering = steering_trunc(distance_err * DRIVE_P,
 			-DRIVE_MAX_OUT, DRIVE_MAX_OUT);
 
+		/* Update motors */
 		if (fabs(distance_err) < 2.0)
 		{
 			motors_write(0, 0);
@@ -66,6 +81,7 @@ void steering_cycle(void)
 			motors_write(drive_steering, drive_steering);
 		}
 		break;
+		/* Rotating vehicle to specified heading with specified rate */
 	case STEERING_ROTATE:
 		/* Outside PID controller (controls heading change rate) */
 		heading_err = steering.desired_heading - sensors_data.heading;
@@ -99,6 +115,7 @@ void steering_cycle(void)
 		heading_rate_steering = steering_trunc(heading_rate_steering,
 			-HEADING_RATE_MAX_OUT, HEADING_RATE_MAX_OUT);
 
+		/* Update motors */
 		if (fabs(heading_err) < 2.0)
 		{
 			motors_write(0, 0);
